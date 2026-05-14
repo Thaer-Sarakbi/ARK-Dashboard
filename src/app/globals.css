@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+:root {
+  --background: #EDF0F4;
+  --foreground: #1E293B;
+}
+
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  /* Brand accent */
+  --color-acc:         #185FA5;
+  --color-acc-bg:      #E6F1FB;
+  --color-acc-txt:     #0C447C;
+
+  /* Semantic — success */
+  --color-ok:          #3B6D11;
+  --color-ok-bg:       #EAF3DE;
+
+  /* Semantic — warning */
+  --color-warn:        #854F0B;
+  --color-warn-bg:     #FAEEDA;
+
+  /* Semantic — error */
+  --color-err:         #A32D2D;
+  --color-err-bg:      #FCEBEB;
+
+  /* Sidebar */
+  --color-sidebar-bg:         #0F1E35;
+  --color-sidebar-text:       #A8BDCF;
+  --color-sidebar-sec:        #4A637A;
+  --color-sidebar-active-bg:  rgba(24,95,165,0.45);
+  --color-sidebar-active-txt: #7BBFFF;
+
+  /* Content surface */
+  --color-canvas:      #EDF0F4;
+  --color-surface:     #FFFFFF;
+  --color-border:      rgba(0,0,0,0.10);
+
+  /* Date pill */
+  --color-date-bg:     #C7622A;
+  --color-date-txt:    #FFFFFF;
+
+  /* Text */
+  --color-text:        #1E293B;
+  --color-muted:       #64748B;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
