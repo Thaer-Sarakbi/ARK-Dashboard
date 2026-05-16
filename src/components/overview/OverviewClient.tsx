@@ -21,7 +21,7 @@ import { getAttendanceStatus, formatTime } from "@/lib/utils";
 export function OverviewClient() {
   const { workers, subscribe: subWorkers } = useWorkersStore();
   const { subscribe: subTasks } = useTasksStore();
-  const { fetchReports, analysis, analysisLoading } = useReportsStore();
+  const { subscribeReports, analysis, analysisLoading } = useReportsStore();
 
   useEffect(() => {
     const u1 = subWorkers();
@@ -29,12 +29,15 @@ export function OverviewClient() {
     return () => { u1(); u2(); };
   }, [subWorkers, subTasks]);
 
+  const adminIds = workers.filter((w) => w.admin).map((w) => w.id).sort().join(",");
+
   useEffect(() => {
+    if (!adminIds) return;
     const admins = workers
       .filter((w) => w.admin)
       .map((w) => ({ id: w.id, name: w.name, placeName: w.placeName }));
-    if (admins.length > 0) fetchReports(admins);
-  }, [workers, fetchReports]);
+    return subscribeReports(admins);
+  }, [adminIds, subscribeReports]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const presentCount = workers.filter((w) => getAttendanceStatus(w.checkIn) !== "Absent").length;
   const absentCount = workers.filter((w) => getAttendanceStatus(w.checkIn) === "Absent").length;

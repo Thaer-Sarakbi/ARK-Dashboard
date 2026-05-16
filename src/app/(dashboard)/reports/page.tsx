@@ -7,19 +7,22 @@ import { useReportsStore } from "@/store/useReportsStore";
 
 export default function ReportsPage() {
   const { workers, subscribe } = useWorkersStore();
-  const { reports, analysis, analysisLoading, loading, fetchReports, fetchAnalysis } = useReportsStore();
+  const { reports, analysis, analysisLoading, loading, subscribeReports, fetchAnalysis } = useReportsStore();
 
   useEffect(() => {
     const unsub = subscribe();
     return unsub;
   }, [subscribe]);
 
+  const adminIds = workers.filter((w) => w.admin).map((w) => w.id).sort().join(",");
+
   useEffect(() => {
+    if (!adminIds) return;
     const admins = workers
       .filter((w) => w.admin)
       .map((w) => ({ id: w.id, name: w.name, placeName: w.placeName }));
-    if (admins.length > 0) fetchReports(admins);
-  }, [workers, fetchReports]);
+    return subscribeReports(admins);
+  }, [adminIds, subscribeReports]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const byHotel = reports.reduce<Record<string, typeof reports>>((acc, r) => {
     if (!acc[r.hotelName]) acc[r.hotelName] = [];

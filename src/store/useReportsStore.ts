@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { AdminReport, AnalysisResult } from "@/lib/types";
 import { todayKey, yesterdayKey } from "@/lib/utils";
@@ -11,7 +11,7 @@ interface ReportsState {
   analysisLoading: boolean;
   error: string | null;
   lastNotesHash: string;
-  fetchReports: (adminWorkers: { id: string; name: string; placeName: string }[]) => Promise<void>;
+  subscribeReports: (adminWorkers: { id: string; name: string; placeName: string }[]) => () => void;
   fetchAnalysis: () => Promise<void>;
   clear: () => void;
 }
@@ -20,25 +20,31 @@ function hashNotes(reports: AdminReport[]): string {
   return reports.map((r) => `${r.userId}:${r.note}`).join("|");
 }
 
-async function getLatestReport(
-  uid: string,
-  name: string,
-  placeName: string
-): Promise<AdminReport | null> {
-  for (const dateKey of [todayKey(), yesterdayKey()]) {
-    const snap = await getDoc(doc(db, "users", uid, "attendance", dateKey, "report", "today"));
-    if (snap.exists()) {
-      const data = snap.data() as { note?: string };
-      return {
-        userId: uid,
-        workerName: name,
-        hotelName: placeName,
-        date: dateKey,
-        note: data.note ?? "",
-      };
-    }
+// Module-level listener state — lives outside Zustand so it isn't serialized
+const activeListeners = new Map<string, () => void>(); // uid → onSnapshot unsub
+const yesterdayCache  = new Map<string, AdminReport | null>(); // uid → yesterday report
+const reportMap       = new Map<string, AdminReport>(); // uid → active report
+let   subscriberCount = 0;
+
+function flushReports(
+  get: () => ReportsState,
+  set: (s: Partial<ReportsState>) => void
+) {
+  const reports = Array.from(reportMap.values());
+  const hash = hashNotes(reports);
+  set({ reports, loading: false });
+  if (hash !== get().lastNotesHash) {
+    set({ lastNotesHash: hash });
+    void get().fetchAnalysis();
   }
-  return null;
+}
+
+function teardown() {
+  subscriberCount = 0;
+  activeListeners.forEach((u) => u());
+  activeListeners.clear();
+  yesterdayCache.clear();
+  reportMap.clear();
 }
 
 export const useReportsStore = create<ReportsState>((set, get) => ({
@@ -49,24 +55,69 @@ export const useReportsStore = create<ReportsState>((set, get) => ({
   error: null,
   lastNotesHash: "",
 
-  fetchReports: async (adminWorkers) => {
+  subscribeReports: (adminWorkers) => {
+    if (adminWorkers.length === 0) return () => {};
+
+    subscriberCount++;
     set({ loading: true, error: null });
-    try {
-      const results = await Promise.all(
-        adminWorkers.map((w) => getLatestReport(w.id, w.name, w.placeName))
+
+    for (const worker of adminWorkers) {
+      if (activeListeners.has(worker.id)) continue;
+
+      // Register onSnapshot synchronously so it fires immediately on mount.
+      // Yesterday is loaded lazily on first no-today-doc snapshot and cached.
+      const unsub = onSnapshot(
+        doc(db, "users", worker.id, "attendance", todayKey(), "report", "today"),
+        async (snap) => {
+          if (snap.exists()) {
+            const data = snap.data() as { note?: string };
+            reportMap.set(worker.id, {
+              userId: worker.id,
+              workerName: worker.name,
+              hotelName: worker.placeName,
+              date: todayKey(),
+              note: data.note ?? "",
+            });
+            flushReports(get, set);
+          } else {
+            // Today's doc doesn't exist — fall back to yesterday (loaded once)
+            if (!yesterdayCache.has(worker.id)) {
+              try {
+                const ySnap = await getDoc(
+                  doc(db, "users", worker.id, "attendance", yesterdayKey(), "report", "today")
+                );
+                yesterdayCache.set(
+                  worker.id,
+                  ySnap.exists()
+                    ? {
+                        userId: worker.id,
+                        workerName: worker.name,
+                        hotelName: worker.placeName,
+                        date: yesterdayKey(),
+                        note: (ySnap.data() as { note?: string }).note ?? "",
+                      }
+                    : null
+                );
+              } catch {
+                yesterdayCache.set(worker.id, null);
+              }
+            }
+            const fallback = yesterdayCache.get(worker.id) ?? null;
+            if (fallback) reportMap.set(worker.id, fallback);
+            else reportMap.delete(worker.id);
+            flushReports(get, set);
+          }
+        },
+        (err) => set({ error: err.message, loading: false })
       );
-      const reports = results.filter(Boolean) as AdminReport[];
-      const hash = hashNotes(reports);
 
-      set({ reports, loading: false });
-
-      if (hash !== get().lastNotesHash) {
-        set({ lastNotesHash: hash });
-        await get().fetchAnalysis();
-      }
-    } catch (err) {
-      set({ error: (err as Error).message, loading: false });
+      activeListeners.set(worker.id, unsub);
     }
+
+    return () => {
+      subscriberCount--;
+      if (subscriberCount <= 0) teardown();
+    };
   },
 
   fetchAnalysis: async () => {
@@ -88,7 +139,8 @@ export const useReportsStore = create<ReportsState>((set, get) => ({
     }
   },
 
-  clear: () =>
+  clear: () => {
+    teardown();
     set({
       reports: [],
       analysis: null,
@@ -96,5 +148,6 @@ export const useReportsStore = create<ReportsState>((set, get) => ({
       analysisLoading: false,
       error: null,
       lastNotesHash: "",
-    }),
+    });
+  },
 }));

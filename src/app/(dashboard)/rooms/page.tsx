@@ -8,19 +8,22 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 
 export default function RoomsPage() {
   const { workers, subscribe } = useWorkersStore();
-  const { analysis, analysisLoading, fetchReports } = useReportsStore();
+  const { analysis, analysisLoading, subscribeReports } = useReportsStore();
 
   useEffect(() => {
     const unsub = subscribe();
     return unsub;
   }, [subscribe]);
 
+  const adminIds = workers.filter((w) => w.admin).map((w) => w.id).sort().join(",");
+
   useEffect(() => {
+    if (!adminIds) return;
     const admins = workers
       .filter((w) => w.admin)
       .map((w) => ({ id: w.id, name: w.name, placeName: w.placeName }));
-    if (admins.length > 0) fetchReports(admins);
-  }, [workers, fetchReports]);
+    return subscribeReports(admins);
+  }, [adminIds, subscribeReports]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const hotels = analysis?.hotels ?? [];
   const totals = hotels.reduce(

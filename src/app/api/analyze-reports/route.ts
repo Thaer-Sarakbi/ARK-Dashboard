@@ -11,9 +11,9 @@ const analysisSchema = z.object({
   hotels: z.array(
     z.object({
       hotelName: z.string(),
-      emptyRooms: z.number().int().min(0),
-      staffRooms: z.number().int().min(0),
-      occupiedRooms: z.number().int().min(0),
+      emptyRooms: z.number(),
+      staffRooms: z.number(),
+      occupiedRooms: z.number(),
       complaints: z.array(
         z.object({
           text: z.string(),
