@@ -3,7 +3,6 @@ import type { TaskStatus } from "@/lib/types";
 
 type BadgeVariant =
   | "Present"
-  | "Late"
   | "Absent"
   | TaskStatus
   | "low"
@@ -11,7 +10,7 @@ type BadgeVariant =
   | "high";
 
 function getClass(status: BadgeVariant): string {
-  if (status === "Present" || status === "Late" || status === "Absent")
+  if (status === "Present" || status === "Absent")
     return attendancePillClass(status);
   if (status === "low" || status === "medium" || status === "high")
     return severityPillClass(status);

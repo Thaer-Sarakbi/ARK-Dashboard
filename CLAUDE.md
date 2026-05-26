@@ -35,6 +35,7 @@ No test suite is configured yet.
 ## Environment Variables
 
 All `NEXT_PUBLIC_FIREBASE_*` vars are required for Firebase initialization. Server-side AI routes require `OPENROUTER_API_KEY`.
+Add `CRON_SECRET` to `.env.local` — Vercel passes this as the `Authorization: Bearer` header when invoking cron routes.
 
 ## Architecture
 
@@ -42,35 +43,38 @@ All `NEXT_PUBLIC_FIREBASE_*` vars are required for Firebase initialization. Serv
 
 ```
 src/app/
-  layout.tsx                     # Root layout — mounts FirebaseProvider, Geist fonts
-  page.tsx                       # Redirects to /overview
+  layout.tsx                          # Root layout — mounts FirebaseProvider, Geist fonts
+  page.tsx                            # Redirects to /overview
   (dashboard)/
-    layout.tsx                   # Dashboard shell: Sidebar + Topbar + <main>
-    overview/page.tsx            # Overview page (delegates to OverviewClient)
-    attendance/page.tsx          # Attendance tracker
-    tasks/page.tsx               # Task list
-    tasks/[taskId]/page.tsx      # Task detail
-    rooms/page.tsx               # Room status
-    complaints/page.tsx          # Complaints log
-    reports/page.tsx             # Daily admin reports
+    layout.tsx                        # Dashboard shell: Sidebar + Topbar + <main>
+    overview/page.tsx                 # Overview page (delegates to OverviewClient)
+    attendance/page.tsx               # Attendance tracker — date pagination, night shift, worker popup
+    tasks/page.tsx                    # Task list with status filter tabs
+    tasks/[taskId]/page.tsx           # Task detail with image attachment slider
+    rooms/page.tsx                    # Room status — reads from Firestore /dates/ + date pagination
+    complaints/page.tsx               # Complaints — reads from Firestore /dates/ + date pagination
+    reports/page.tsx                  # Daily admin reports + manual re-analyze
   api/
-    chat/route.ts                # POST — AI chat stream (OpenRouter → Claude)
-    analyze-reports/route.ts     # POST — AI structured extraction from admin reports
+    chat/route.ts                     # POST — AI chat stream (OpenRouter → Claude)
+    analyze-reports/route.ts          # POST — AI structured extraction from admin reports (manual)
+    cron/analyze-reports/route.ts     # GET — Daily cron: analyze reports + write to Firestore
 ```
 
 ### Components
 
 ```
 src/components/
-  FirebaseProvider.tsx           # Mounts Auth + profile Firestore listeners at app root
+  FirebaseProvider.tsx                # Mounts Auth + profile Firestore listeners at app root
   layout/
-    Sidebar.tsx                  # 196px dark sidebar with nav groups + user footer
-    Topbar.tsx                   # Top bar
+    Sidebar.tsx                       # 196px dark sidebar with nav groups + user footer
+    Topbar.tsx                        # Top bar
   overview/
-    OverviewClient.tsx           # Overview dashboard client component
-    AiChatPanel.tsx              # Sliding AI chat panel (useChat hook)
+    OverviewClient.tsx                # Overview dashboard — reads KPIs from new Firebase stores
+    AiChatPanel.tsx                   # Sliding AI chat panel (useChat hook)
+  attendance/
+    WorkerAttendanceModal.tsx         # Monthly attendance popup (click worker name to open)
   tasks/
-    AssignTaskModal.tsx          # Modal for creating/assigning a task
+    AssignTaskModal.tsx               # Modal for creating/assigning a task
   ui/
     Avatar.tsx
     KpiCard.tsx
@@ -87,9 +91,11 @@ All stores live under `src/store/`. Each subscribes to Firebase in real-time and
 |---|---|---|
 | `useAuthStore` | Firebase Auth | Sign-in, sign-out, `onAuthStateChanged` listener |
 | `useUserStore` | `users/{uid}` (Firestore) | Signed-in user's profile document |
-| `useWorkersStore` | `users` collection + attendance subcollections | All worker profiles with today's check-in/check-out |
-| `useTasksStore` | `users/{uid}/tasks` (collectionGroup) | All tasks across all workers; create and update status |
-| `useReportsStore` | `users/{uid}/attendance/{date}/report/today` | Admin daily reports + AI-analysed `AnalysisResult`. Uses `subscribeReports(adminWorkers)` — registers `onSnapshot` listeners on today's report doc per admin (synchronous), falls back to yesterday via lazy `getDoc`. Module-level `reportMap`/`yesterdayCache`/`activeListeners` manage listener lifetime with ref-counting (`subscriberCount`). |
+| `useWorkersStore` | `users` collection + attendance subcollections | All worker profiles with today's Morning + Night check-in/check-out |
+| `useTasksStore` | `users/{uid}/tasks` (collectionGroup) | All tasks; create and update status |
+| `useReportsStore` | `users/{uid}/attendance/{date}/report/today` | Admin daily reports + AI-analysed `AnalysisResult` (used by reports page) |
+| `useRoomStatusStore` | `/dates/{date}/roomStatus/` (Firestore) | Room status per date, fetched on demand via `fetchForDate(dateKey)` |
+| `useComplaintsStore` | `/dates/{date}/complaints/` (Firestore) | Complaints per date, fetched on demand via `fetchForDate(dateKey)` |
 | `useStorageStore` | Firebase Storage | Download URLs and folder listings with caching |
 | `createCollectionStore<T>` | Generic factory | Typed Zustand store for any Firestore collection path |
 
@@ -97,32 +103,83 @@ All stores live under `src/store/`. Each subscribes to Firebase in real-time and
 
 ```
 users/{uid}
-  .name / .fullName / .email / .role / .placeName / .admin / .photoURL
+  .name / .fullName / .email / .role / .placeName / .fcmToken / .admin
 
 users/{uid}/tasks/{taskId}
-  .title / .description / .assignedTo / .assignedBy / .location
-  .duration / .status / .progress / .createdAt / .updatedAt
+  .title / .description
+  .assignedTo (worker name) / .assignedToId / .assignedBy / .assignedById
+  .location / .duration (days) / .Status ("Not Started"|"In progress"|"Completed")
+  .creationDate (Date) / .updatedAt (Timestamp)
 
 users/{uid}/attendance/{DD-MM-YYYY}/checkIn/Morning
+  .time  (Timestamp)
+
+users/{uid}/attendance/{DD-MM-YYYY}/checkIn/Night
   .time  (Timestamp)
 
 users/{uid}/attendance/{DD-MM-YYYY}/checkOut/Morning
   .timestamp  (Timestamp)
 
+users/{uid}/attendance/{DD-MM-YYYY}/checkOut/Night
+  .timestamp  (Timestamp)
+
 users/{uid}/attendance/{DD-MM-YYYY}/report/today
   .note  (string)
+
+dates/{DD-MM-YYYY}/roomStatus/{autoId}
+  .hotel / .emptyRooms / .staffRooms / .occupiedRooms / .analyzedAt
+
+dates/{DD-MM-YYYY}/complaints/{autoId}
+  .text / .severity ("low"|"medium"|"high") / .hotel / .submittedBy / .analyzedAt
 ```
 
-Date keys are formatted `DD-MM-YYYY` (see `todayKey()` / `yesterdayKey()` in `src/lib/utils.ts`).
+Date keys are formatted `DD-MM-YYYY` (see `todayKey()` / `dateKeyFromDate()` in `src/lib/utils.ts`).
+
+### Firebase Storage data model
+
+```
+users/{uid}/profile/files                                          # Profile photo
+users/{uid}/attendance/{DD-MM-YYYY}/report/today/files            # Daily report attachments
+users/{uid}/tasks/{taskId}/files                                  # Task attachments (shown as slider in task detail)
+users/{uid}/tasks/{taskId}/updates/{updateId}/files               # Task update attachments
+```
 
 ### AI routes
 
-- **`/api/chat`** — streams a response via `streamText` using `anthropic/claude-sonnet-4-6` on OpenRouter. Accepts `{ messages, context }` where `context` carries live KPI data (attendance counts, open complaints, empty rooms, active/overdue tasks) injected into the system prompt.
-- **`/api/analyze-reports`** — calls `generateObject` with a Zod schema to extract structured hotel data (room counts, complaint severities) from free-text admin reports.
+- **`/api/chat`** — streams a response via `streamText` using `anthropic/claude-sonnet-4-6` on OpenRouter. Accepts `{ messages, context }` where `context` carries live KPI data injected into the system prompt.
+- **`/api/analyze-reports`** — calls `generateObject` with a Zod schema to extract structured hotel data from free-text admin reports (used by the reports page's manual Re-analyze button).
+- **`/api/cron/analyze-reports`** — GET endpoint called by Vercel Cron at 12:00 AM UTC daily. Fetches all admin users, reads today's reports, runs AI analysis, writes results to `/dates/{date}/roomStatus/` and `/dates/{date}/complaints/` in Firestore.
+
+### Vercel Cron
+
+Configured in `vercel.json` at project root:
+```json
+{ "crons": [{ "path": "/api/cron/analyze-reports", "schedule": "0 0 * * *" }] }
+```
+Requires `CRON_SECRET` env var. The route verifies `Authorization: Bearer ${CRON_SECRET}`.
+
+### Task status
+
+`TaskStatus` values: `"Not Started"` | `"In progress"` | `"Completed"` | `"Delayed"` | `"Urgent"`.
+New tasks are created with `Status: "Not Started"` (capital S field name in Firestore).
+The tasks page filter shows only Not Started / In progress / Completed; Delayed and Urgent are hidden.
+
+### Attendance
+
+- Status is `"Present"` | `"Absent"` only (Late removed).
+- Present = has morning OR night check-in.
+- Monthly popup (`WorkerAttendanceModal`): Present = BOTH morning check-in AND check-out for that day.
+- Attendance page supports Prev/Next day arrows; today uses live store, past dates fetch directly from Firestore.
+- Duration column shows text only (`8h 30m`) — no progress bar.
+
+### Assign Task
+
+Hardcoded: `assignedBy: 'Surendran Balan'`, `assignedById: 'TN7uEpCUmZRStizVfME1vvqx3az2'`.
+Duration stored in days (integer).
 
 ### Design tokens
 
-Defined in `src/app/globals.css` under `@theme inline`. Key CSS variables:
+Defined in `src/app/globals.css` under `@theme inline`. Base font-size: 15px. Key CSS variables:
 
 | Token | Value | Use |
 |---|---|---|
@@ -133,7 +190,7 @@ Defined in `src/app/globals.css` under `@theme inline`. Key CSS variables:
 | `--color-ok/warn/err` | green/amber/red | Status pill text |
 | `--color-ok-bg/warn-bg/err-bg` | tints | Status pill background |
 
-Helper functions in `src/lib/utils.ts` map statuses to pill classes: `statusPillClass`, `attendancePillClass`, `severityPillClass`.
+Helper functions in `src/lib/utils.ts`: `statusPillClass`, `attendancePillClass`, `severityPillClass`, `dateKeyFromDate`, `getPrevDay`, `getNextDay`, `formatDateKey`.
 
 ### Routing conventions
 

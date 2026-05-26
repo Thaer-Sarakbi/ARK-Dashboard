@@ -4,7 +4,8 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { useWorkersStore } from "@/store/useWorkersStore";
 import { useTasksStore } from "@/store/useTasksStore";
-import { useReportsStore } from "@/store/useReportsStore";
+import { useRoomStatusStore } from "@/store/useRoomStatusStore";
+import { useComplaintsStore } from "@/store/useComplaintsStore";
 import { getAttendanceStatus } from "@/lib/utils";
 import { IconSend } from "@tabler/icons-react";
 import { useEffect, useRef, useState } from "react";
@@ -12,17 +13,17 @@ import { useEffect, useRef, useState } from "react";
 function buildContext() {
   const workers = useWorkersStore.getState().workers;
   const tasks = useTasksStore.getState().tasks;
-  const analysis = useReportsStore.getState().analysis;
+  const roomItems = useRoomStatusStore.getState().items;
+  const complaintItems = useComplaintsStore.getState().items;
 
-  const presentCount = workers.filter((w) => getAttendanceStatus(w.checkIn) !== "Absent").length;
-  const absentCount = workers.filter((w) => getAttendanceStatus(w.checkIn) === "Absent").length;
-  const lateCount = workers.filter((w) => getAttendanceStatus(w.checkIn) === "Late").length;
-  const activeTasks = tasks.filter((t) => t.status !== "Completed").length;
-  const overdueTasks = tasks.filter((t) => t.status === "Delayed" || t.status === "Urgent").length;
-  const totalEmptyRooms = analysis?.hotels.reduce((s, h) => s + h.emptyRooms, 0) ?? 0;
-  const openComplaints = analysis?.hotels.reduce((s, h) => s + h.complaints.length, 0) ?? 0;
+  const presentCount = workers.filter((w) => getAttendanceStatus(w.checkIn, w.nightCheckIn) !== "Absent").length;
+  const absentCount = workers.filter((w) => getAttendanceStatus(w.checkIn, w.nightCheckIn) === "Absent").length;
+  const activeTasks = tasks.filter((t) => (t.Status ?? t.status) !== "Completed").length;
+  const overdueTasks = tasks.filter((t) => (t.Status ?? t.status) === "Delayed" || (t.Status ?? t.status) === "Urgent").length;
+  const totalEmptyRooms = roomItems.reduce((s, h) => s + (h.emptyRooms ?? 0), 0);
+  const openComplaints = complaintItems.length;
 
-  return { presentCount, absentCount, lateCount, activeTasks, overdueTasks, totalEmptyRooms, openComplaints };
+  return { presentCount, absentCount, activeTasks, overdueTasks, totalEmptyRooms, openComplaints };
 }
 
 export function AiChatPanel() {

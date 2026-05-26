@@ -41,19 +41,19 @@ export const useWorkersStore = create<WorkersState>((set) => ({
 
         const attendanceResults = await Promise.all(
           baseDocs.map(async (worker) => {
-            const [checkInSnap, checkOutSnap] = await Promise.all([
+            const [checkInSnap, checkOutSnap, nightInSnap, nightOutSnap] = await Promise.all([
               getDoc(doc(db, "users", worker.id, "attendance", today, "checkIn", "Morning")),
               getDoc(doc(db, "users", worker.id, "attendance", today, "checkOut", "Morning")),
+              getDoc(doc(db, "users", worker.id, "attendance", today, "checkIn", "Night")),
+              getDoc(doc(db, "users", worker.id, "attendance", today, "checkOut", "Night")),
             ]);
 
-            const checkIn = checkInSnap.exists()
-              ? (checkInSnap.data().time as Timestamp)
-              : null;
-            const checkOut = checkOutSnap.exists()
-              ? (checkOutSnap.data().timestamp as Timestamp)
-              : null;
+            const checkIn = checkInSnap.exists() ? (checkInSnap.data().time as Timestamp) : null;
+            const checkOut = checkOutSnap.exists() ? ((checkOutSnap.data().timestamp ?? checkOutSnap.data().time) as Timestamp) : null;
+            const nightCheckIn = nightInSnap.exists() ? (nightInSnap.data().time as Timestamp) : null;
+            const nightCheckOut = nightOutSnap.exists() ? ((nightOutSnap.data().timestamp ?? nightOutSnap.data().time) as Timestamp) : null;
 
-            return { ...worker, checkIn, checkOut } as WorkerWithAttendance;
+            return { ...worker, checkIn, checkOut, nightCheckIn, nightCheckOut } as WorkerWithAttendance;
           })
         );
 

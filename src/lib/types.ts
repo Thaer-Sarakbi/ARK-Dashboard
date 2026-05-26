@@ -13,9 +13,11 @@ export interface WorkerProfile {
 export interface WorkerWithAttendance extends WorkerProfile {
   checkIn: Timestamp | null;
   checkOut: Timestamp | null;
+  nightCheckIn: Timestamp | null;
+  nightCheckOut: Timestamp | null;
 }
 
-export type TaskStatus = "New" | "In progress" | "Delayed" | "Completed" | "Urgent";
+export type TaskStatus = "Not Started" | "In progress" | "Completed" | "Delayed" | "Urgent";
 
 export interface Task {
   id: string;
@@ -23,12 +25,16 @@ export interface Task {
   title: string;
   description: string;
   assignedTo: string;
+  assignedToId?: string;
   assignedBy: string;
+  assignedById?: string;
   location: string;
   duration: number;
-  status: TaskStatus;
-  progress: number;
-  createdAt: Timestamp;
+  Status?: TaskStatus;
+  status?: TaskStatus;
+  progress?: number;
+  creationDate?: Timestamp | Date;
+  createdAt?: Timestamp;
   updatedAt?: Timestamp;
 }
 
@@ -61,4 +67,22 @@ export interface HotelAnalysis {
 export interface AnalysisResult {
   hotels: HotelAnalysis[];
   analysedAt: number;
+}
+
+export interface RoomStatusDoc {
+  id: string;
+  hotel: string;
+  emptyRooms: number;
+  staffRooms: number;
+  occupiedRooms: number;
+  analyzedAt: Timestamp | null;
+}
+
+export interface ComplaintDoc {
+  id: string;
+  text: string;
+  severity: ComplaintSeverity;
+  hotel: string;
+  submittedBy: string;
+  analyzedAt: Timestamp | null;
 }

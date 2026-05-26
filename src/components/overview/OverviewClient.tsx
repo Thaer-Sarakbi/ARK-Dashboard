@@ -10,18 +10,20 @@ import {
 } from "@tabler/icons-react";
 import { useWorkersStore } from "@/store/useWorkersStore";
 import { useTasksStore } from "@/store/useTasksStore";
-import { useReportsStore } from "@/store/useReportsStore";
+import { useRoomStatusStore } from "@/store/useRoomStatusStore";
+import { useComplaintsStore } from "@/store/useComplaintsStore";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Avatar } from "@/components/ui/Avatar";
 import { AiChatPanel } from "./AiChatPanel";
 import { ProgressBar } from "@/components/ui/ProgressBar";
-import { getAttendanceStatus, formatTime } from "@/lib/utils";
+import { getAttendanceStatus, formatTime, todayKey } from "@/lib/utils";
 
 export function OverviewClient() {
   const { workers, subscribe: subWorkers } = useWorkersStore();
   const { subscribe: subTasks } = useTasksStore();
-  const { subscribeReports, analysis, analysisLoading } = useReportsStore();
+  const { items: roomItems, loading: roomsLoading, fetchForDate: fetchRooms } = useRoomStatusStore();
+  const { items: complaintItems, loading: complaintsLoading, fetchForDate: fetchComplaints } = useComplaintsStore();
 
   useEffect(() => {
     const u1 = subWorkers();
@@ -29,20 +31,16 @@ export function OverviewClient() {
     return () => { u1(); u2(); };
   }, [subWorkers, subTasks]);
 
-  const adminIds = workers.filter((w) => w.admin).map((w) => w.id).sort().join(",");
-
   useEffect(() => {
-    if (!adminIds) return;
-    const admins = workers
-      .filter((w) => w.admin)
-      .map((w) => ({ id: w.id, name: w.name, placeName: w.placeName }));
-    return subscribeReports(admins);
-  }, [adminIds, subscribeReports]); // eslint-disable-line react-hooks/exhaustive-deps
+    const today = todayKey();
+    fetchRooms(today);
+    fetchComplaints(today);
+  }, [fetchRooms, fetchComplaints]);
 
-  const presentCount = workers.filter((w) => getAttendanceStatus(w.checkIn) !== "Absent").length;
-  const absentCount = workers.filter((w) => getAttendanceStatus(w.checkIn) === "Absent").length;
-  const totalEmptyRooms = analysis?.hotels.reduce((s, h) => s + h.emptyRooms, 0) ?? 0;
-  const openComplaints = analysis?.hotels.reduce((s, h) => s + h.complaints.length, 0) ?? 0;
+  const presentCount = workers.filter((w) => getAttendanceStatus(w.checkIn, w.nightCheckIn) !== "Absent").length;
+  const absentCount = workers.filter((w) => getAttendanceStatus(w.checkIn, w.nightCheckIn) === "Absent").length;
+  const totalEmptyRooms = roomItems.reduce((s, h) => s + (h.emptyRooms ?? 0), 0);
+  const openComplaints = complaintItems.length;
 
   const recentWorkers = workers.slice(0, 4);
 
@@ -53,26 +51,26 @@ export function OverviewClient() {
         <KpiCard
           label="Attendance (live)"
           value={presentCount}
-          icon={<IconUsers size={12} color="var(--color-acc)" />}
+          icon={<IconUsers size={13} color="var(--color-acc)" />}
           sub={<span className="text-ok">● Live · {workers.length > 0 ? Math.round((presentCount / workers.length) * 100) : 0}% rate</span>}
         />
         <KpiCard
           label="Absent today"
           value={absentCount}
-          icon={<IconUserX size={12} color="var(--color-err)" />}
+          icon={<IconUserX size={13} color="var(--color-err)" />}
           valueClass="text-err"
           sub={<span className="text-err">Unexcused</span>}
         />
         <KpiCard
           label="Empty rooms"
-          value={analysisLoading ? "…" : totalEmptyRooms}
-          icon={<IconDoor size={12} color="var(--color-warn)" />}
+          value={roomsLoading ? "…" : totalEmptyRooms}
+          icon={<IconDoor size={13} color="var(--color-warn)" />}
           sub={<span className="text-warn">Across all hotels</span>}
         />
         <KpiCard
           label="Open complaints"
-          value={analysisLoading ? "…" : openComplaints}
-          icon={<IconMessageReport size={12} color="var(--color-err)" />}
+          value={complaintsLoading ? "…" : openComplaints}
+          icon={<IconMessageReport size={13} color="var(--color-err)" />}
           valueClass="text-err"
           sub={
             <Link href="/complaints" className="text-acc-txt underline-offset-2">
@@ -90,13 +88,13 @@ export function OverviewClient() {
           style={{ background: "var(--color-surface)", border: "0.5px solid rgba(0,0,0,0.10)" }}
         >
           <div className="flex items-center justify-between mb-2.5">
-            <div className="flex items-center gap-1.5 text-[12px] font-medium text-text">
-              <IconUsers size={14} color="var(--color-acc)" />
+            <div className="flex items-center gap-1.5 text-[13px] font-medium text-text">
+              <IconUsers size={15} color="var(--color-acc)" />
               Attendance · today (live)
             </div>
-            <Link href="/attendance" className="text-[11px] text-acc-txt">All →</Link>
+            <Link href="/attendance" className="text-[12px] text-acc-txt">All →</Link>
           </div>
-          <table className="w-full text-[11px] border-collapse" style={{ tableLayout: "fixed" }}>
+          <table className="w-full text-[12px] border-collapse" style={{ tableLayout: "fixed" }}>
             <thead>
               <tr>
                 <th className="text-left text-muted font-medium pb-1 w-[36%]" style={{ borderBottom: "0.5px solid rgba(0,0,0,0.10)" }}>Worker</th>
@@ -107,7 +105,7 @@ export function OverviewClient() {
             </thead>
             <tbody>
               {recentWorkers.map((w) => {
-                const status = getAttendanceStatus(w.checkIn);
+                const status = getAttendanceStatus(w.checkIn, w.nightCheckIn);
                 return (
                   <tr key={w.id}>
                     <td className="py-1.5" style={{ borderBottom: "0.5px solid rgba(0,0,0,0.06)" }}>
@@ -121,7 +119,7 @@ export function OverviewClient() {
                       <StatusBadge status={status} />
                     </td>
                     <td className="py-1.5 text-muted" style={{ borderBottom: "0.5px solid rgba(0,0,0,0.06)" }}>
-                      {w.checkIn ? formatTime(w.checkIn) : "–"}
+                      {w.checkIn ? formatTime(w.checkIn) : (w.nightCheckIn ? formatTime(w.nightCheckIn) : "–")}
                     </td>
                   </tr>
                 );
@@ -143,13 +141,13 @@ export function OverviewClient() {
         style={{ background: "var(--color-surface)", border: "0.5px solid rgba(0,0,0,0.10)" }}
       >
         <div className="flex items-center justify-between mb-2.5">
-          <div className="flex items-center gap-1.5 text-[12px] font-medium text-text">
-            <IconDoor size={14} color="var(--color-acc)" />
+          <div className="flex items-center gap-1.5 text-[13px] font-medium text-text">
+            <IconDoor size={15} color="var(--color-acc)" />
             Empty rooms today · by hotel
           </div>
-          <Link href="/rooms" className="text-[11px] text-acc-txt">Full table →</Link>
+          <Link href="/rooms" className="text-[12px] text-acc-txt">Full table →</Link>
         </div>
-        <table className="w-full text-[11px] border-collapse">
+        <table className="w-full text-[12px] border-collapse">
           <thead>
             <tr>
               <th className="text-left text-muted font-medium pb-1 w-[35%]" style={{ borderBottom: "0.5px solid rgba(0,0,0,0.10)" }}>Hotel name</th>
@@ -159,25 +157,25 @@ export function OverviewClient() {
             </tr>
           </thead>
           <tbody>
-            {analysisLoading && (
-              <tr><td colSpan={4} className="text-center text-muted py-4">Analyzing reports…</td></tr>
+            {roomsLoading && (
+              <tr><td colSpan={4} className="text-center text-muted py-4">Loading…</td></tr>
             )}
-            {!analysisLoading && analysis?.hotels.map((h) => {
-              const total = h.staffRooms + h.occupiedRooms + h.emptyRooms;
-              const pct = total > 0 ? Math.round((h.occupiedRooms / total) * 100) : 0;
+            {!roomsLoading && roomItems.map((h) => {
+              const total = (h.staffRooms ?? 0) + (h.occupiedRooms ?? 0) + (h.emptyRooms ?? 0);
+              const pct = total > 0 ? Math.round(((h.occupiedRooms ?? 0) / total) * 100) : 0;
               return (
-                <tr key={h.hotelName}>
-                  <td className="py-1.5 font-medium" style={{ borderBottom: "0.5px solid rgba(0,0,0,0.06)" }}>{h.hotelName}</td>
-                  <td className="py-1.5" style={{ borderBottom: "0.5px solid rgba(0,0,0,0.06)" }}>{h.staffRooms}</td>
-                  <td className="py-1.5 font-medium text-warn" style={{ borderBottom: "0.5px solid rgba(0,0,0,0.06)" }}>{h.emptyRooms}</td>
+                <tr key={h.id}>
+                  <td className="py-1.5 font-medium" style={{ borderBottom: "0.5px solid rgba(0,0,0,0.06)" }}>{h.hotel}</td>
+                  <td className="py-1.5" style={{ borderBottom: "0.5px solid rgba(0,0,0,0.06)" }}>{h.staffRooms ?? 0}</td>
+                  <td className="py-1.5 font-medium text-warn" style={{ borderBottom: "0.5px solid rgba(0,0,0,0.06)" }}>{h.emptyRooms ?? 0}</td>
                   <td className="py-1.5" style={{ borderBottom: "0.5px solid rgba(0,0,0,0.06)" }}>
                     <ProgressBar value={pct} width={80} />
                   </td>
                 </tr>
               );
             })}
-            {!analysisLoading && !analysis && (
-              <tr><td colSpan={4} className="text-center text-muted py-4">No reports available</td></tr>
+            {!roomsLoading && roomItems.length === 0 && (
+              <tr><td colSpan={4} className="text-center text-muted py-4">No room data available — run AI analysis first</td></tr>
             )}
           </tbody>
         </table>

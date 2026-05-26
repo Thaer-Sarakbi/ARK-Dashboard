@@ -7,6 +7,7 @@ import {
   doc,
   onSnapshot,
   serverTimestamp,
+  type Timestamp,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { Task, TaskStatus } from "@/lib/types";
@@ -15,7 +16,9 @@ interface NewTaskInput {
   title: string;
   description: string;
   assignedTo: string;
+  assignedToId: string;
   assignedBy: string;
+  assignedById: string;
   location: string;
   duration: number;
 }
@@ -52,9 +55,13 @@ export const useTasksStore = create<TasksState>((set) => ({
             } as Task;
           })
           .sort((a, b) => {
-            const ta = a.createdAt?.toMillis?.() ?? 0;
-            const tb = b.createdAt?.toMillis?.() ?? 0;
-            return tb - ta;
+            const getMs = (t: Task) => {
+              if (t.createdAt?.toMillis) return t.createdAt.toMillis();
+              if (t.creationDate instanceof Date) return t.creationDate.getTime();
+              if ((t.creationDate as Timestamp | undefined)?.toMillis) return (t.creationDate as Timestamp).toMillis();
+              return 0;
+            };
+            return getMs(b) - getMs(a);
           });
 
         set({ tasks, loading: false });
@@ -69,10 +76,17 @@ export const useTasksStore = create<TasksState>((set) => ({
 
   addTask: async (input, assigneeUid) => {
     await addDoc(collection(db, "users", assigneeUid, "tasks"), {
-      ...input,
-      status: "New" as TaskStatus,
-      progress: 0,
-      createdAt: serverTimestamp(),
+      title: input.title,
+      description: input.description,
+      assignedTo: input.assignedTo,
+      assignedToId: input.assignedToId,
+      assignedBy: input.assignedBy,
+      assignedById: input.assignedById,
+      location: input.location,
+      duration: input.duration,
+      Status: "Not Started" as TaskStatus,
+      creationDate: new Date(),
+      updatedAt: serverTimestamp(),
     });
   },
 

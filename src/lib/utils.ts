@@ -41,14 +41,11 @@ export function calcDuration(checkIn: Timestamp, checkOut: Timestamp | null): st
 }
 
 export function getAttendanceStatus(
-  checkIn: Timestamp | null
-): "Present" | "Late" | "Absent" {
-  if (!checkIn) return "Absent";
-  const d = checkIn.toDate();
-  const hours = d.getHours();
-  const minutes = d.getMinutes();
-  if (hours < 9 || (hours === 9 && minutes === 0)) return "Present";
-  return "Late";
+  checkIn: Timestamp | null,
+  nightCheckIn?: Timestamp | null
+): "Present" | "Absent" {
+  if (checkIn || nightCheckIn) return "Present";
+  return "Absent";
 }
 
 export function getInitials(name: string): string {
@@ -69,7 +66,7 @@ export function formatDate(ts: Timestamp): string {
 
 export function statusPillClass(status: TaskStatus): string {
   const map: Record<TaskStatus, string> = {
-    New: "bg-acc-bg text-acc-txt",
+    "Not Started": "bg-acc-bg text-acc-txt",
     "In progress": "bg-ok-bg text-ok",
     Delayed: "bg-warn-bg text-warn",
     Completed: "bg-ok-bg text-ok",
@@ -78,13 +75,39 @@ export function statusPillClass(status: TaskStatus): string {
   return map[status] ?? "bg-acc-bg text-acc-txt";
 }
 
-export function attendancePillClass(status: "Present" | "Late" | "Absent"): string {
+export function attendancePillClass(status: "Present" | "Absent"): string {
   const map = {
     Present: "bg-ok-bg text-ok",
-    Late: "bg-warn-bg text-warn",
     Absent: "bg-err-bg text-err",
   };
   return map[status];
+}
+
+export function dateKeyFromDate(d: Date): string {
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  return `${dd}-${mm}-${yyyy}`;
+}
+
+export function getPrevDay(key: string): string {
+  const [dd, mm, yyyy] = key.split("-").map(Number);
+  const d = new Date(yyyy, mm - 1, dd);
+  d.setDate(d.getDate() - 1);
+  return dateKeyFromDate(d);
+}
+
+export function getNextDay(key: string): string {
+  const [dd, mm, yyyy] = key.split("-").map(Number);
+  const d = new Date(yyyy, mm - 1, dd);
+  d.setDate(d.getDate() + 1);
+  return dateKeyFromDate(d);
+}
+
+export function formatDateKey(key: string): string {
+  const [dd, mm, yyyy] = key.split("-").map(Number);
+  const d = new Date(yyyy, mm - 1, dd);
+  return d.toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "short", year: "numeric" });
 }
 
 export function severityPillClass(severity: string): string {

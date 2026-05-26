@@ -1,36 +1,26 @@
 "use client";
 
-import { useEffect } from "react";
-import { IconBuilding } from "@tabler/icons-react";
-import { useWorkersStore } from "@/store/useWorkersStore";
-import { useReportsStore } from "@/store/useReportsStore";
+import { useEffect, useState } from "react";
+import { IconBuilding, IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
+import { useRoomStatusStore } from "@/store/useRoomStatusStore";
 import { ProgressBar } from "@/components/ui/ProgressBar";
+import { todayKey, getPrevDay, getNextDay, formatDateKey } from "@/lib/utils";
 
 export default function RoomsPage() {
-  const { workers, subscribe } = useWorkersStore();
-  const { analysis, analysisLoading, subscribeReports } = useReportsStore();
+  const { items, loading, fetchForDate } = useRoomStatusStore();
+  const [selectedDate, setSelectedDate] = useState(todayKey());
+
+  const isToday = selectedDate === todayKey();
 
   useEffect(() => {
-    const unsub = subscribe();
-    return unsub;
-  }, [subscribe]);
+    fetchForDate(selectedDate);
+  }, [selectedDate, fetchForDate]);
 
-  const adminIds = workers.filter((w) => w.admin).map((w) => w.id).sort().join(",");
-
-  useEffect(() => {
-    if (!adminIds) return;
-    const admins = workers
-      .filter((w) => w.admin)
-      .map((w) => ({ id: w.id, name: w.name, placeName: w.placeName }));
-    return subscribeReports(admins);
-  }, [adminIds, subscribeReports]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const hotels = analysis?.hotels ?? [];
-  const totals = hotels.reduce(
+  const totals = items.reduce(
     (acc, h) => ({
-      staffRooms: acc.staffRooms + h.staffRooms,
-      emptyRooms: acc.emptyRooms + h.emptyRooms,
-      occupiedRooms: acc.occupiedRooms + h.occupiedRooms,
+      staffRooms: acc.staffRooms + (h.staffRooms ?? 0),
+      emptyRooms: acc.emptyRooms + (h.emptyRooms ?? 0),
+      occupiedRooms: acc.occupiedRooms + (h.occupiedRooms ?? 0),
     }),
     { staffRooms: 0, emptyRooms: 0, occupiedRooms: 0 }
   );
@@ -44,14 +34,31 @@ export default function RoomsPage() {
         style={{ background: "var(--color-surface)", border: "0.5px solid rgba(0,0,0,0.10)" }}
       >
         <div className="flex items-center justify-between mb-2.5">
-          <div className="flex items-center gap-1.5 text-[12px] font-medium text-text">
-            <IconBuilding size={14} color="var(--color-acc)" />
+          <div className="flex items-center gap-1.5 text-[13px] font-medium text-text">
+            <IconBuilding size={15} color="var(--color-acc)" />
             Room status · by hotel
           </div>
-          <div className="text-[10px] text-muted">Live · from admin reports</div>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setSelectedDate((d) => getPrevDay(d))}
+              className="p-0.5 rounded hover:bg-canvas transition-colors"
+            >
+              <IconChevronLeft size={15} color="var(--color-muted)" />
+            </button>
+            <span className="text-[12px] text-text font-medium min-w-[170px] text-center">
+              {formatDateKey(selectedDate)}
+            </span>
+            <button
+              onClick={() => { if (!isToday) setSelectedDate((d) => getNextDay(d)); }}
+              disabled={isToday}
+              className="p-0.5 rounded hover:bg-canvas transition-colors disabled:opacity-30"
+            >
+              <IconChevronRight size={15} color="var(--color-muted)" />
+            </button>
+          </div>
         </div>
 
-        <table className="w-full text-[11px] border-collapse" style={{ tableLayout: "fixed" }}>
+        <table className="w-full text-[12px] border-collapse" style={{ tableLayout: "fixed" }}>
           <thead>
             <tr>
               <th className="text-left text-muted font-medium pb-1.5 w-[28%]" style={{ borderBottom: "0.5px solid rgba(0,0,0,0.10)" }}>Hotel name</th>
@@ -62,28 +69,28 @@ export default function RoomsPage() {
             </tr>
           </thead>
           <tbody>
-            {analysisLoading && (
-              <tr><td colSpan={5} className="text-center text-muted py-6">Analyzing reports…</td></tr>
+            {loading && (
+              <tr><td colSpan={5} className="text-center text-muted py-6">Loading…</td></tr>
             )}
-            {!analysisLoading && hotels.length === 0 && (
-              <tr><td colSpan={5} className="text-center text-muted py-6">No report data available yet</td></tr>
+            {!loading && items.length === 0 && (
+              <tr><td colSpan={5} className="text-center text-muted py-6">No room data for this date</td></tr>
             )}
-            {hotels.map((h) => {
-              const total = h.staffRooms + h.occupiedRooms + h.emptyRooms;
-              const pct = total > 0 ? Math.round((h.occupiedRooms / total) * 100) : 0;
+            {items.map((h) => {
+              const total = (h.staffRooms ?? 0) + (h.occupiedRooms ?? 0) + (h.emptyRooms ?? 0);
+              const pct = total > 0 ? Math.round(((h.occupiedRooms ?? 0) / total) * 100) : 0;
               return (
-                <tr key={h.hotelName}>
-                  <td className="py-1.5 font-medium" style={{ borderBottom: "0.5px solid rgba(0,0,0,0.06)" }}>{h.hotelName}</td>
-                  <td className="py-1.5" style={{ borderBottom: "0.5px solid rgba(0,0,0,0.06)" }}>{h.staffRooms}</td>
-                  <td className="py-1.5 font-medium text-warn" style={{ borderBottom: "0.5px solid rgba(0,0,0,0.06)" }}>{h.emptyRooms}</td>
-                  <td className="py-1.5" style={{ borderBottom: "0.5px solid rgba(0,0,0,0.06)" }}>{h.occupiedRooms}</td>
-                  <td className="py-1.5" style={{ borderBottom: "0.5px solid rgba(0,0,0,0.06)" }}>
+                <tr key={h.id}>
+                  <td className="py-2 font-medium" style={{ borderBottom: "0.5px solid rgba(0,0,0,0.06)" }}>{h.hotel}</td>
+                  <td className="py-2" style={{ borderBottom: "0.5px solid rgba(0,0,0,0.06)" }}>{h.staffRooms ?? 0}</td>
+                  <td className="py-2 font-medium text-warn" style={{ borderBottom: "0.5px solid rgba(0,0,0,0.06)" }}>{h.emptyRooms ?? 0}</td>
+                  <td className="py-2" style={{ borderBottom: "0.5px solid rgba(0,0,0,0.06)" }}>{h.occupiedRooms ?? 0}</td>
+                  <td className="py-2" style={{ borderBottom: "0.5px solid rgba(0,0,0,0.06)" }}>
                     <ProgressBar value={pct} width={70} />
                   </td>
                 </tr>
               );
             })}
-            {hotels.length > 0 && (
+            {items.length > 0 && (
               <tr className="font-medium">
                 <td className="pt-2.5">Total</td>
                 <td className="pt-2.5">{totals.staffRooms}</td>
