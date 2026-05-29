@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect } from "react";
-import { IconFileText, IconRefresh } from "@tabler/icons-react";
+import { IconFileText, IconRefresh, IconCheck, IconAlertCircle } from "@tabler/icons-react";
 import { useWorkersStore } from "@/store/useWorkersStore";
 import { useReportsStore } from "@/store/useReportsStore";
 
 export default function ReportsPage() {
   const { workers, subscribe } = useWorkersStore();
-  const { reports, analysis, analysisLoading, loading, subscribeReports, fetchAnalysis } = useReportsStore();
+  const { reports, analysis, analysisLoading, saveStatus, loading, subscribeReports, fetchAnalysis } = useReportsStore();
 
   useEffect(() => {
     const unsub = subscribe();
@@ -39,11 +39,20 @@ export default function ReportsPage() {
         </div>
         <button
           onClick={fetchAnalysis}
-          disabled={analysisLoading || reports.length === 0}
-          className="ml-auto flex items-center gap-1 text-[11px] text-acc-txt disabled:opacity-50"
+          disabled={analysisLoading || saveStatus === "saving" || reports.length === 0}
+          className="ml-auto flex items-center gap-1 text-[11px] disabled:opacity-50"
+          style={{
+            color: saveStatus === "saved" ? "var(--color-ok)" : saveStatus === "error" ? "var(--color-err)" : "var(--color-acc)",
+          }}
         >
-          <IconRefresh size={12} className={analysisLoading ? "animate-spin" : ""} />
-          Re-analyze
+          {saveStatus === "saved" ? (
+            <><IconCheck size={12} />Saved</>
+          ) : saveStatus === "error" ? (
+            <><IconAlertCircle size={12} />Failed</>
+          ) : (
+            <><IconRefresh size={12} className={analysisLoading || saveStatus === "saving" ? "animate-spin" : ""} />
+            {analysisLoading ? "Analyzing…" : saveStatus === "saving" ? "Saving…" : "Analyze & Save"}</>
+          )}
         </button>
       </div>
 

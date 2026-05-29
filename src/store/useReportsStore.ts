@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { doc, getDoc, onSnapshot } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, onSnapshot, addDoc, deleteDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { AdminReport, AnalysisResult } from "@/lib/types";
 import { todayKey, yesterdayKey } from "@/lib/utils";
@@ -9,6 +9,7 @@ interface ReportsState {
   analysis: AnalysisResult | null;
   loading: boolean;
   analysisLoading: boolean;
+  saveStatus: "idle" | "saving" | "saved" | "error";
   error: string | null;
   lastNotesHash: string;
   subscribeReports: (adminWorkers: { id: string; name: string; placeName: string }[]) => () => void;
@@ -32,11 +33,8 @@ function flushReports(
 ) {
   const reports = Array.from(reportMap.values());
   const hash = hashNotes(reports);
+  if (hash !== get().lastNotesHash) set({ lastNotesHash: hash });
   set({ reports, loading: false });
-  if (hash !== get().lastNotesHash) {
-    set({ lastNotesHash: hash });
-    void get().fetchAnalysis();
-  }
 }
 
 function teardown() {
@@ -52,6 +50,7 @@ export const useReportsStore = create<ReportsState>((set, get) => ({
   analysis: null,
   loading: false,
   analysisLoading: false,
+  saveStatus: "idle",
   error: null,
   lastNotesHash: "",
 
@@ -124,7 +123,7 @@ export const useReportsStore = create<ReportsState>((set, get) => ({
     const { reports } = get();
     if (reports.length === 0) return;
 
-    set({ analysisLoading: true });
+    set({ analysisLoading: true, saveStatus: "idle" });
     try {
       const res = await fetch("/api/analyze-reports", {
         method: "POST",
@@ -133,9 +132,49 @@ export const useReportsStore = create<ReportsState>((set, get) => ({
       });
       if (!res.ok) throw new Error(`Analysis failed: ${res.status}`);
       const data = (await res.json()) as AnalysisResult;
-      set({ analysis: data, analysisLoading: false });
+      set({ analysis: data, analysisLoading: false, saveStatus: "saving" });
+
+      // Persist to Firestore — delete stale docs first then write fresh ones
+      const dateKey = todayKey();
+      const analyzedAt = new Date();
+
+      const [roomSnap, complSnap] = await Promise.all([
+        getDocs(collection(db, "dates", dateKey, "roomStatus")),
+        getDocs(collection(db, "dates", dateKey, "complaints")),
+      ]);
+      await Promise.all([
+        ...roomSnap.docs.map((d) => deleteDoc(d.ref)),
+        ...complSnap.docs.map((d) => deleteDoc(d.ref)),
+      ]);
+
+      await Promise.all(
+        data.hotels.map(async (hotel) => {
+          await addDoc(collection(db, "dates", dateKey, "roomStatus"), {
+            hotel: hotel.hotelName,
+            emptyRooms: hotel.emptyRooms,
+            staffRooms: hotel.staffRooms,
+            occupiedRooms: hotel.occupiedRooms,
+            analyzedAt,
+          });
+          const report = reports.find((r) => r.hotelName === hotel.hotelName);
+          await Promise.all(
+            hotel.complaints.map((c) =>
+              addDoc(collection(db, "dates", dateKey, "complaints"), {
+                text: c.text,
+                severity: c.severity,
+                hotel: hotel.hotelName,
+                submittedBy: report?.workerName ?? "Admin",
+                analyzedAt,
+              })
+            )
+          );
+        })
+      );
+
+      set({ saveStatus: "saved" });
+      setTimeout(() => set({ saveStatus: "idle" }), 3000);
     } catch (err) {
-      set({ error: (err as Error).message, analysisLoading: false });
+      set({ error: (err as Error).message, analysisLoading: false, saveStatus: "error" });
     }
   },
 
@@ -146,6 +185,7 @@ export const useReportsStore = create<ReportsState>((set, get) => ({
       analysis: null,
       loading: false,
       analysisLoading: false,
+      saveStatus: "idle",
       error: null,
       lastNotesHash: "",
     });
