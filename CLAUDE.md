@@ -66,8 +66,9 @@ src/app/
 src/components/
   FirebaseProvider.tsx                # Mounts Auth + profile Firestore listeners at app root
   layout/
-    Sidebar.tsx                       # 196px dark sidebar with nav groups + user footer
-    Topbar.tsx                        # Top bar
+    SidebarContext.tsx                # React context — provides isOpen/toggle/close for mobile drawer
+    Sidebar.tsx                       # 196px dark sidebar; fixed drawer on mobile (z-50), static on md+
+    Topbar.tsx                        # Top bar — hamburger button (md:hidden) toggles mobile drawer
   overview/
     OverviewClient.tsx                # Overview dashboard — reads KPIs from new Firebase stores
     AiChatPanel.tsx                   # Sliding AI chat panel (useChat hook)
