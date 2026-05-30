@@ -156,7 +156,7 @@ export default function AttendancePage() {
               <tr><td colSpan={6} className="text-center text-muted py-6">No workers found</td></tr>
             )}
             {filtered.map((w) => {
-              const status = getAttendanceStatus(w.checkIn, w.nightCheckIn);
+              const status = getAttendanceStatus(w.checkIn, w.nightCheckIn, w.checkOut, w.nightCheckOut);
 
               const hasMorning = Boolean(w.checkIn);
               const hasNight = Boolean(w.nightCheckIn);

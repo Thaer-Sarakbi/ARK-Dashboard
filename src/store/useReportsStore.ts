@@ -135,7 +135,8 @@ export const useReportsStore = create<ReportsState>((set, get) => ({
       set({ analysis: data, analysisLoading: false, saveStatus: "saving" });
 
       // Persist to Firestore — delete stale docs first then write fresh ones
-      const dateKey = todayKey();
+      // Use the date from the reports themselves (may be today or yesterday)
+      const dateKey = reports[0]?.date ?? todayKey();
       const analyzedAt = new Date();
 
       const [roomSnap, complSnap] = await Promise.all([

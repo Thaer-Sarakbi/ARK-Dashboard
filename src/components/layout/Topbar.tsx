@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { IconSearch, IconBell, IconMenu2 } from "@tabler/icons-react";
 import { useSidebar } from "./SidebarContext";
@@ -18,8 +19,8 @@ function getTitle(pathname: string): string {
   return TITLES[pathname] ?? "Dashboard";
 }
 
-function todayLabel(): string {
-  return new Date().toLocaleDateString("en-GB", {
+function formatDate(d: Date): string {
+  return d.toLocaleDateString("en-GB", {
     weekday: "short",
     day: "numeric",
     month: "short",
@@ -27,9 +28,24 @@ function todayLabel(): string {
   });
 }
 
+function formatTime(d: Date): string {
+  return d.toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
+
 export function Topbar() {
   const pathname = usePathname();
   const { toggle } = useSidebar();
+  const [now, setNow] = useState<Date | null>(null);
+
+  useEffect(() => {
+    setNow(new Date());
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
 
   return (
     <header
@@ -50,12 +66,16 @@ export function Topbar() {
         {getTitle(pathname)}
       </div>
 
-      <span
-        className="hidden sm:inline text-[10px] font-medium px-2.5 py-[3px] rounded-full flex-shrink-0"
-        style={{ background: "var(--color-date-bg)", color: "var(--color-date-txt)" }}
-      >
-        {todayLabel()}
-      </span>
+      {now && (
+        <span
+          className="hidden sm:inline-flex items-center gap-1.5 text-[10px] font-medium px-2.5 py-[3px] rounded-full flex-shrink-0"
+          style={{ background: "var(--color-date-bg)", color: "var(--color-date-txt)" }}
+        >
+          {formatDate(now)}
+          <span style={{ opacity: 0.4 }}>·</span>
+          <span style={{ fontVariantNumeric: "tabular-nums" }}>{formatTime(now)}</span>
+        </span>
+      )}
 
       <button
         className="w-7 h-7 rounded-[7px] flex items-center justify-center text-muted transition-colors hover:bg-canvas flex-shrink-0"

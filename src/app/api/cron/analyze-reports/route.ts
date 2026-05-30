@@ -1,4 +1,4 @@
-import { todayKey } from "@/lib/utils";
+import { yesterdayKey } from "@/lib/utils";
 import { fetchAdminReports, runAnalysisAndPersist } from "@/lib/analyzeReports";
 
 export async function GET(req: Request) {
@@ -9,7 +9,7 @@ export async function GET(req: Request) {
   }
 
   try {
-    const dateKey = todayKey();
+    const dateKey = yesterdayKey();
 
     const reports = await fetchAdminReports(dateKey);
     if (reports.length === 0) {

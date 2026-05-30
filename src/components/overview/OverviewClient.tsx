@@ -37,8 +37,8 @@ export function OverviewClient() {
     fetchComplaints(today);
   }, [fetchRooms, fetchComplaints]);
 
-  const presentCount = workers.filter((w) => getAttendanceStatus(w.checkIn, w.nightCheckIn) !== "Absent").length;
-  const absentCount = workers.filter((w) => getAttendanceStatus(w.checkIn, w.nightCheckIn) === "Absent").length;
+  const presentCount = workers.filter((w) => getAttendanceStatus(w.checkIn, w.nightCheckIn, w.checkOut, w.nightCheckOut) !== "Absent").length;
+  const absentCount = workers.filter((w) => getAttendanceStatus(w.checkIn, w.nightCheckIn, w.checkOut, w.nightCheckOut) === "Absent").length;
   const totalEmptyRooms = roomItems.reduce((s, h) => s + (h.emptyRooms ?? 0), 0);
   const openComplaints = complaintItems.length;
 
@@ -105,7 +105,7 @@ export function OverviewClient() {
             </thead>
             <tbody>
               {recentWorkers.map((w) => {
-                const status = getAttendanceStatus(w.checkIn, w.nightCheckIn);
+                const status = getAttendanceStatus(w.checkIn, w.nightCheckIn, w.checkOut, w.nightCheckOut);
                 return (
                   <tr key={w.id}>
                     <td className="py-1.5" style={{ borderBottom: "0.5px solid rgba(0,0,0,0.06)" }}>

@@ -38,6 +38,10 @@
   --color-surface:     #FFFFFF;
   --color-border:      rgba(0,0,0,0.10);
 
+  /* Finished / checked-out status */
+  --color-fin:         #4A637A;
+  --color-fin-bg:      #E2E8EE;
+
   /* Date pill */
   --color-date-bg:     #C7622A;
   --color-date-txt:    #FFFFFF;

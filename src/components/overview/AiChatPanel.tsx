@@ -16,8 +16,8 @@ function buildContext() {
   const roomItems = useRoomStatusStore.getState().items;
   const complaintItems = useComplaintsStore.getState().items;
 
-  const presentCount = workers.filter((w) => getAttendanceStatus(w.checkIn, w.nightCheckIn) !== "Absent").length;
-  const absentCount = workers.filter((w) => getAttendanceStatus(w.checkIn, w.nightCheckIn) === "Absent").length;
+  const presentCount = workers.filter((w) => getAttendanceStatus(w.checkIn, w.nightCheckIn, w.checkOut, w.nightCheckOut) !== "Absent").length;
+  const absentCount = workers.filter((w) => getAttendanceStatus(w.checkIn, w.nightCheckIn, w.checkOut, w.nightCheckOut) === "Absent").length;
   const activeTasks = tasks.filter((t) => (t.Status ?? t.status) !== "Completed").length;
   const overdueTasks = tasks.filter((t) => (t.Status ?? t.status) === "Delayed" || (t.Status ?? t.status) === "Urgent").length;
   const totalEmptyRooms = roomItems.reduce((s, h) => s + (h.emptyRooms ?? 0), 0);

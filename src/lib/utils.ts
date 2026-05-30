@@ -25,9 +25,10 @@ export function formatTime(ts: Timestamp): string {
   return `${h}:${m}`;
 }
 
-export function calcDuration(checkIn: Timestamp, checkOut: Timestamp | null): string {
+export function calcDuration(checkIn: Timestamp, checkOut: Timestamp | null): string | null {
   if (!checkOut) {
     const diffMs = Date.now() - checkIn.toDate().getTime();
+    if (diffMs > 24 * 60 * 60 * 1000) return null;
     const totalMins = Math.floor(diffMs / 60000);
     const h = Math.floor(totalMins / 60);
     const m = totalMins % 60;
@@ -42,10 +43,16 @@ export function calcDuration(checkIn: Timestamp, checkOut: Timestamp | null): st
 
 export function getAttendanceStatus(
   checkIn: Timestamp | null,
-  nightCheckIn?: Timestamp | null
-): "Present" | "Absent" {
-  if (checkIn || nightCheckIn) return "Present";
-  return "Absent";
+  nightCheckIn?: Timestamp | null,
+  checkOut?: Timestamp | null,
+  nightCheckOut?: Timestamp | null,
+): "Present" | "Absent" | "Finished" {
+  const hasAnyCheckIn = !!(checkIn || nightCheckIn);
+  if (!hasAnyCheckIn) return "Absent";
+  const morningActive = !!checkIn && !checkOut;
+  const nightActive   = !!nightCheckIn && !nightCheckOut;
+  if (morningActive || nightActive) return "Present";
+  return "Finished";
 }
 
 export function getInitials(name: string): string {
@@ -75,12 +82,13 @@ export function statusPillClass(status: TaskStatus): string {
   return map[status] ?? "bg-acc-bg text-acc-txt";
 }
 
-export function attendancePillClass(status: "Present" | "Absent"): string {
-  const map = {
-    Present: "bg-ok-bg text-ok",
-    Absent: "bg-err-bg text-err",
+export function attendancePillClass(status: "Present" | "Absent" | "Finished"): string {
+  const map: Record<string, string> = {
+    Present:  "bg-ok-bg text-ok",
+    Absent:   "bg-err-bg text-err",
+    Finished: "bg-fin-bg text-fin",
   };
-  return map[status];
+  return map[status] ?? "";
 }
 
 export function dateKeyFromDate(d: Date): string {
