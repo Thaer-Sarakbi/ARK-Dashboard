@@ -49,10 +49,24 @@ export function getAttendanceStatus(
 ): "Present" | "Absent" | "Finished" {
   const hasAnyCheckIn = !!(checkIn || nightCheckIn);
   if (!hasAnyCheckIn) return "Absent";
+
+  const now = Date.now();
+  const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+
   const morningActive = !!checkIn && !checkOut;
-  const nightActive   = !!nightCheckIn && !nightCheckOut;
-  if (morningActive || nightActive) return "Present";
-  return "Finished";
+  const nightActive = !!nightCheckIn && !nightCheckOut;
+
+  // Keep Present as long as any active shift is within 24 hours of check-in.
+  // This prevents the day rolling past midnight from flipping the status to Absent.
+  if (morningActive && checkIn && now - checkIn.toDate().getTime() < TWENTY_FOUR_HOURS) return "Present";
+  if (nightActive && nightCheckIn && now - nightCheckIn.toDate().getTime() < TWENTY_FOUR_HOURS) return "Present";
+
+  // At least one shift was fully completed (checkout recorded)
+  const hasCompletedShift = (!!checkIn && !!checkOut) || (!!nightCheckIn && !!nightCheckOut);
+  if (hasCompletedShift) return "Finished";
+
+  // Checked in but no checkout for 24+ hours with no completed shift → treat as Absent
+  return "Absent";
 }
 
 export function getInitials(name: string): string {
