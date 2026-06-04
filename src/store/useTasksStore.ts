@@ -84,7 +84,7 @@ export const useTasksStore = create<TasksState>((set) => ({
       assignedById: input.assignedById,
       location: input.location,
       duration: input.duration,
-      Status: "Not Started" as TaskStatus,
+      status: "Not Started" as TaskStatus,
       creationDate: new Date(),
       updatedAt: serverTimestamp(),
     });
