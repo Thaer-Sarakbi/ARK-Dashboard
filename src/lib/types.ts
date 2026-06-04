@@ -8,6 +8,7 @@ export interface WorkerProfile {
   placeName: string;
   admin: boolean;
   photoURL?: string;
+  phoneNumber?: string;
 }
 
 export interface WorkerWithAttendance extends WorkerProfile {

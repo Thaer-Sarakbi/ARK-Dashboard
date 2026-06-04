@@ -40,7 +40,7 @@ export function AssignTaskModal({ isOpen, onClose }: AssignTaskModalProps) {
     }
     setSubmitting(true);
     try {
-      await addTask(
+      const taskId = await addTask(
         {
           title: title.trim(),
           description: description.trim(),
@@ -53,6 +53,17 @@ export function AssignTaskModal({ isOpen, onClose }: AssignTaskModalProps) {
         },
         assigneeId
       );
+
+      const phone = (selectedWorker?.phoneNumber ?? "").replace(/\D/g, "");
+      if (phone) {
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin;
+        const taskUrl = `${appUrl}/tasks/${taskId}`;
+        const text = encodeURIComponent(
+          `Hi ${selectedWorker?.name ?? ""}! You have a new task assigned:\n"${title.trim()}"\n\n${taskUrl}`
+        );
+        window.open(`https://wa.me/${phone}?text=${text}`, "_blank");
+      }
+
       setTitle(""); setDescription(""); setAssigneeId(""); setLocation(""); setDuration("");
       onClose();
     } finally {

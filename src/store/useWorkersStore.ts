@@ -36,6 +36,7 @@ export const useWorkersStore = create<WorkersState>((set) => ({
             id: d.id,
             ...(data as Omit<WorkerWithAttendance, "id" | "name" | "checkIn" | "checkOut">),
             name: (data.fullName ?? data.name ?? "") as string,
+            phoneNumber: (data.phoneNumber ?? "") as string,
           };
         });
 

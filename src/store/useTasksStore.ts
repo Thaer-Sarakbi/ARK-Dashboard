@@ -28,7 +28,7 @@ interface TasksState {
   loading: boolean;
   error: string | null;
   subscribe: () => () => void;
-  addTask: (input: NewTaskInput, assigneeUid: string) => Promise<void>;
+  addTask: (input: NewTaskInput, assigneeUid: string) => Promise<string>;
   updateTaskStatus: (task: Task, status: TaskStatus, progress: number) => Promise<void>;
   clear: () => void;
 }
@@ -75,7 +75,7 @@ export const useTasksStore = create<TasksState>((set) => ({
   },
 
   addTask: async (input, assigneeUid) => {
-    await addDoc(collection(db, "users", assigneeUid, "tasks"), {
+    const ref = await addDoc(collection(db, "users", assigneeUid, "tasks"), {
       title: input.title,
       description: input.description,
       assignedTo: input.assignedTo,
@@ -88,6 +88,7 @@ export const useTasksStore = create<TasksState>((set) => ({
       creationDate: new Date(),
       updatedAt: serverTimestamp(),
     });
+    return ref.id;
   },
 
   updateTaskStatus: async (task, status, progress) => {
