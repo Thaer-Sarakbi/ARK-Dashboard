@@ -9,6 +9,7 @@ import {
   IconChevronLeft,
   IconChevronRight,
   IconPhoto,
+  IconBrandWhatsapp,
 } from "@tabler/icons-react";
 import { useTasksStore } from "@/store/useTasksStore";
 import { useWorkersStore } from "@/store/useWorkersStore";
@@ -80,7 +81,27 @@ export default function TaskDetailPage({ params }: { params: Promise<{ taskId: s
             <IconClipboardText size={15} color="var(--color-acc)" />
             {task.title}
           </div>
-          <StatusBadge status={getTaskStatus(task)} />
+          <div className="flex items-center gap-2">
+            <StatusBadge status={getTaskStatus(task)} />
+            {worker?.phoneNumber && (
+              <button
+                onClick={() => {
+                  const phone = worker.phoneNumber!.replace(/\D/g, "");
+                  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin;
+                  const taskUrl = `${appUrl}/tasks/${taskId}`;
+                  const text = encodeURIComponent(
+                    `Hi ${worker.name}! Here is your task:\n"${task.title}"\n\n${taskUrl}`
+                  );
+                  window.open(`https://wa.me/${phone}?text=${text}`, "_blank");
+                }}
+                className="flex items-center gap-1.5 text-[12px] px-2.5 py-1.5 rounded-lg text-white"
+                style={{ background: "#25D366" }}
+              >
+                <IconBrandWhatsapp size={14} />
+                Send by WhatsApp
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Info grid */}
