@@ -8,7 +8,7 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { WorkerWithAttendance } from "@/lib/types";
-import { todayKey } from "@/lib/utils";
+import { todayKey, yesterdayKey } from "@/lib/utils";
 
 interface WorkersState {
   workers: WorkerWithAttendance[];
@@ -26,6 +26,7 @@ export const useWorkersStore = create<WorkersState>((set) => ({
   subscribe: () => {
     set({ loading: true, error: null });
     const today = todayKey();
+    const yesterday = yesterdayKey();
 
     const unsubscribe = onSnapshot(
       collection(db, "users"),
@@ -51,8 +52,20 @@ export const useWorkersStore = create<WorkersState>((set) => ({
 
             const checkIn = checkInSnap.exists() ? (checkInSnap.data().time as Timestamp) : null;
             const checkOut = checkOutSnap.exists() ? ((checkOutSnap.data().timestamp ?? checkOutSnap.data().time) as Timestamp) : null;
-            const nightCheckIn = nightInSnap.exists() ? (nightInSnap.data().time as Timestamp) : null;
-            const nightCheckOut = nightOutSnap.exists() ? ((nightOutSnap.data().timestamp ?? nightOutSnap.data().time) as Timestamp) : null;
+            let nightCheckIn = nightInSnap.exists() ? (nightInSnap.data().time as Timestamp) : null;
+            let nightCheckOut = nightOutSnap.exists() ? ((nightOutSnap.data().timestamp ?? nightOutSnap.data().time) as Timestamp) : null;
+
+            // If no night check-in for today, carry forward yesterday's night shift if it has no checkout yet
+            if (!nightCheckIn) {
+              const [yNightInSnap, yNightOutSnap] = await Promise.all([
+                getDoc(doc(db, "users", worker.id, "attendance", yesterday, "checkIn", "Night")),
+                getDoc(doc(db, "users", worker.id, "attendance", yesterday, "checkOut", "Night")),
+              ]);
+              if (yNightInSnap.exists() && !yNightOutSnap.exists()) {
+                nightCheckIn = yNightInSnap.data().time as Timestamp;
+                nightCheckOut = null;
+              }
+            }
 
             return { ...worker, checkIn, checkOut, nightCheckIn, nightCheckOut } as WorkerWithAttendance;
           })

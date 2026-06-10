@@ -167,11 +167,13 @@ The tasks page filter shows only Not Started / In progress / Completed; Delayed 
 
 ### Attendance
 
-- Status is `"Present"` | `"Absent"` only (Late removed).
-- Present = has morning OR night check-in.
+- Status is `"Present"` | `"Absent"` | `"Finished"`.
+- Present = has morning OR night check-in (with no checkout yet).
 - Monthly popup (`WorkerAttendanceModal`): Present = BOTH morning check-in AND check-out for that day.
 - Attendance page supports Prev/Next day arrows; today uses live store, past dates fetch directly from Firestore.
-- Duration column shows text only (`8h 30m`) — no progress bar.
+- Duration column shows text only (`8h 30m`) — no progress bar. Shows `"–"` when no checkout after 24 hours.
+- **Night shift carryover**: `useWorkersStore` checks yesterday's Night check-in if today has none. If yesterday's night check-in exists with no checkout, it is carried forward as the active shift so the worker stays `"Present"` across midnight.
+- **Night shift status rule**: Night workers remain `"Present"` until they explicitly check out — no 24-hour cap (unlike morning shift). Duration shows `"–"` if checkout hasn't happened within 24h.
 
 ### Assign Task
 
