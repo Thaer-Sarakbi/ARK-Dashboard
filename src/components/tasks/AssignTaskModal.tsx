@@ -56,10 +56,9 @@ export function AssignTaskModal({ isOpen, onClose }: AssignTaskModalProps) {
 
       const phone = (selectedWorker?.phoneNumber ?? "").replace(/\D/g, "");
       if (phone) {
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin;
-        const taskUrl = `${appUrl}/tasks/${taskId}`;
+        const deepLink = `https://zxcom.app.link/gCM90m5KQ3b?taskId=${taskId}&assignedToId=${assigneeId}`;
         const text = encodeURIComponent(
-          `Hi ${selectedWorker?.name ?? ""}! You have a new task assigned:\n"${title.trim()}"\n\n${taskUrl}`
+          `Hi ${selectedWorker?.name ?? ""}! You have a new task assigned:\n"${title.trim()}"\n\n${deepLink}`
         );
         window.open(`https://wa.me/${phone}?text=${text}`, "_blank");
       }
