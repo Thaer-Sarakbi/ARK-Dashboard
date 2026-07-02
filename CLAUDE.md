@@ -54,6 +54,7 @@ src/app/
     rooms/page.tsx                    # Room status — reads from Firestore /dates/ + date pagination
     complaints/page.tsx               # Complaints — reads from Firestore /dates/ + date pagination
     reports/page.tsx                  # Daily admin reports + manual re-analyze
+    daily-sales/page.tsx              # Daily sales per hotel — reads from Firestore /sales/ + date pagination
   api/
     chat/route.ts                     # POST — AI chat stream (OpenRouter → Claude)
     analyze-reports/route.ts          # POST — AI structured extraction from admin reports (manual)
@@ -97,6 +98,7 @@ All stores live under `src/store/`. Each subscribes to Firebase in real-time and
 | `useReportsStore` | `users/{uid}/attendance/{date}/report/today` | Admin daily reports + AI-analysed `AnalysisResult` (used by reports page) |
 | `useRoomStatusStore` | `/dates/{date}/roomStatus/` (Firestore) | Room status per date, fetched on demand via `fetchForDate(dateKey)` |
 | `useComplaintsStore` | `/dates/{date}/complaints/` (Firestore) | Complaints per date, fetched on demand via `fetchForDate(dateKey)` |
+| `useSalesStore` | `/sales/{date}/{hotel_name}/today` (Firestore) | Daily sales per hotel, fetched on demand via `fetchForDate(dateKey)`; hotel list derived from distinct `placeName` values in `users` |
 | `useStorageStore` | Firebase Storage | Download URLs and folder listings with caching |
 | `createCollectionStore<T>` | Generic factory | Typed Zustand store for any Firestore collection path |
 
@@ -132,6 +134,9 @@ dates/{DD-MM-YYYY}/roomStatus/{autoId}
 
 dates/{DD-MM-YYYY}/complaints/{autoId}
   .text / .severity ("low"|"medium"|"high") / .hotel / .submittedBy / .analyzedAt
+
+sales/{DD-MM-YYYY}/{hotel_name}/today
+  .before (C/F Before) / .totalSales / .totalExpenses / .banking / .after (C/F After)
 ```
 
 Date keys are formatted `DD-MM-YYYY` (see `todayKey()` / `dateKeyFromDate()` in `src/lib/utils.ts`).
@@ -174,6 +179,13 @@ The tasks page filter shows only Not Started / In progress / Completed; Delayed 
 - Duration column shows text only (`8h 30m`) — no progress bar. Shows `"–"` when no checkout after 24 hours.
 - **Night shift carryover**: `useWorkersStore` checks yesterday's Night check-in if today has none. If yesterday's night check-in exists with no checkout, it is carried forward as the active shift so the worker stays `"Present"` across midnight.
 - **Night shift status rule**: Night workers remain `"Present"` until they explicitly check out — no 24-hour cap (unlike morning shift). Duration shows `"–"` if checkout hasn't happened within 24h.
+
+### Daily Sales
+
+- Sidebar entry "Daily Sales" → `/daily-sales`, in the Operations nav group.
+- Each hotel is rendered as its own card/section, fields shown in fixed order: C/F Before → Total Sales → Total Expenses → Banking → C/F After.
+- Hotel names are not stored as a field — they come from the Firestore path itself (`sales/{date}/{hotel_name}/today`), so `useSalesStore` discovers the hotel list from distinct `placeName` values across the `users` collection, then reads each hotel's `today` doc for the selected date.
+- Paginated by date via the same Prev/Next arrow pattern as Room status / Complaints (`getPrevDay` / `getNextDay` / `formatDateKey`), defaulting to `todayKey()` with Next disabled on today.
 
 ### Assign Task
 

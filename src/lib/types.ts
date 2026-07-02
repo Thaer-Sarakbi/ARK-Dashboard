@@ -87,3 +87,12 @@ export interface ComplaintDoc {
   submittedBy: string;
   analyzedAt: Timestamp | null;
 }
+
+export interface SalesDoc {
+  hotel: string;
+  before: number;
+  totalSales: number;
+  totalExpenses: number;
+  banking: number;
+  after: number;
+}

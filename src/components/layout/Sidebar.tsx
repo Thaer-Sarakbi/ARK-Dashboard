@@ -11,6 +11,7 @@ import {
   IconMessageReport,
   IconFileText,
   IconBuildingSkyscraper,
+  IconCash,
 } from "@tabler/icons-react";
 import { useUserStore } from "@/store/useUserStore";
 import { getInitials } from "@/lib/utils";
@@ -23,6 +24,7 @@ const NAV_ITEMS = [
   { href: "/rooms", label: "Room status", icon: IconBuilding },
   { href: "/complaints", label: "Complaints", icon: IconMessageReport },
   { href: "/reports", label: "Daily reports", icon: IconFileText },
+  { href: "/daily-sales", label: "Daily Sales", icon: IconCash },
 ];
 
 export function Sidebar() {
