@@ -131,6 +131,18 @@ export function formatDateKey(key: string): string {
   return d.toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "short", year: "numeric" });
 }
 
+export function getMonthToDateKeys(): string[] {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const today = now.getDate();
+  const keys: string[] = [];
+  for (let day = 1; day <= today; day++) {
+    keys.push(dateKeyFromDate(new Date(year, month, day)));
+  }
+  return keys;
+}
+
 export function severityPillClass(severity: string): string {
   const map: Record<string, string> = {
     high: "bg-err-bg text-err",

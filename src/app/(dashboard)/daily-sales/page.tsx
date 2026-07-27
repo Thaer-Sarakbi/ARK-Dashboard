@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { IconCash, IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
+import { IconCash, IconChevronLeft, IconChevronRight, IconFileSpreadsheet } from "@tabler/icons-react";
 import { useSalesStore } from "@/store/useSalesStore";
 import { todayKey, getPrevDay, getNextDay, formatDateKey } from "@/lib/utils";
+import { exportDailySalesExcel, exportMonthToDateSalesExcel } from "@/lib/exportSales";
 import type { SalesDoc } from "@/lib/types";
 
 function formatAmount(n: number): string {
@@ -21,12 +22,24 @@ const FIELDS: { key: keyof Omit<SalesDoc, "hotel">; label: string }[] = [
 export default function DailySalesPage() {
   const { items, loading, fetchForDate } = useSalesStore();
   const [selectedDate, setSelectedDate] = useState(todayKey());
+  const [exportingMonth, setExportingMonth] = useState(false);
 
   const isToday = selectedDate === todayKey();
 
   useEffect(() => {
     fetchForDate(selectedDate);
   }, [selectedDate, fetchForDate]);
+
+  const handleExportDay = () => exportDailySalesExcel(selectedDate, items);
+
+  const handleExportMonth = async () => {
+    setExportingMonth(true);
+    try {
+      await exportMonthToDateSalesExcel();
+    } finally {
+      setExportingMonth(false);
+    }
+  };
 
   const totals = FIELDS.reduce((acc, f) => {
     acc[f.key] = items.reduce((sum, h) => sum + (h[f.key] ?? 0), 0);
@@ -58,6 +71,27 @@ export default function DailySalesPage() {
             <IconChevronRight size={15} color="var(--color-muted)" />
           </button>
         </div>
+      </div>
+
+      <div className="flex items-center justify-end gap-2">
+        <button
+          onClick={handleExportDay}
+          disabled={loading || items.length === 0}
+          className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[12px] font-medium text-text hover:bg-canvas transition-colors disabled:opacity-30"
+          style={{ border: "0.5px solid rgba(0,0,0,0.10)" }}
+        >
+          <IconFileSpreadsheet size={14} color="var(--color-acc)" />
+          Export day
+        </button>
+        <button
+          onClick={handleExportMonth}
+          disabled={exportingMonth}
+          className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[12px] font-medium text-text hover:bg-canvas transition-colors disabled:opacity-30"
+          style={{ border: "0.5px solid rgba(0,0,0,0.10)" }}
+        >
+          <IconFileSpreadsheet size={14} color="var(--color-acc)" />
+          {exportingMonth ? "Exporting…" : "Export month to date"}
+        </button>
       </div>
 
       {loading && (
