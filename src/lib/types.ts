@@ -95,4 +95,7 @@ export interface SalesDoc {
   totalExpenses: number;
   banking: number;
   after: number;
+  by: string;
 }
+
+export type SalesAmountKey = "before" | "totalSales" | "totalExpenses" | "banking" | "after";

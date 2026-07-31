@@ -1,17 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { IconCash, IconChevronLeft, IconChevronRight, IconFileSpreadsheet } from "@tabler/icons-react";
+import { IconCash, IconChevronLeft, IconChevronRight, IconFileSpreadsheet, IconUser } from "@tabler/icons-react";
 import { useSalesStore } from "@/store/useSalesStore";
 import { todayKey, getPrevDay, getNextDay, formatDateKey } from "@/lib/utils";
 import { exportDailySalesExcel, exportMonthToDateSalesExcel } from "@/lib/exportSales";
-import type { SalesDoc } from "@/lib/types";
+import type { SalesAmountKey } from "@/lib/types";
 
 function formatAmount(n: number): string {
   return `${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} RM`;
 }
 
-const FIELDS: { key: keyof Omit<SalesDoc, "hotel">; label: string }[] = [
+const FIELDS: { key: SalesAmountKey; label: string }[] = [
   { key: "before", label: "C/F Before" },
   { key: "totalSales", label: "Total Sales" },
   { key: "totalExpenses", label: "Total Expenses" },
@@ -44,7 +44,7 @@ export default function DailySalesPage() {
   const totals = FIELDS.reduce((acc, f) => {
     acc[f.key] = items.reduce((sum, h) => sum + (h[f.key] ?? 0), 0);
     return acc;
-  }, {} as Record<keyof Omit<SalesDoc, "hotel">, number>);
+  }, {} as Record<SalesAmountKey, number>);
 
   return (
     <div className="flex flex-col gap-3">
@@ -119,9 +119,16 @@ export default function DailySalesPage() {
             className="rounded-xl px-[15px] py-[13px]"
             style={{ background: "var(--color-surface)", border: "0.5px solid rgba(0,0,0,0.10)" }}
           >
-            <div className="flex items-center gap-1.5 text-[13px] font-medium text-text mb-2.5">
-              <IconCash size={15} color="var(--color-acc)" />
-              {h.hotel}
+            <div className="flex items-center justify-between flex-wrap gap-1.5 mb-2.5">
+              <div className="flex items-center gap-1.5 text-[13px] font-medium text-text">
+                <IconCash size={15} color="var(--color-acc)" />
+                {h.hotel}
+              </div>
+              <div className="flex items-center gap-1 text-[11px] text-muted">
+                <IconUser size={13} color="var(--color-muted)" />
+                Submitted by
+                <span className="font-medium text-text">{h.by || "—"}</span>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">

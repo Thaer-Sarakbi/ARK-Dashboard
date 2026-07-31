@@ -137,6 +137,7 @@ dates/{DD-MM-YYYY}/complaints/{autoId}
 
 sales/{DD-MM-YYYY}/{hotel_name}/today
   .before (C/F Before) / .totalSales / .totalExpenses / .banking / .after (C/F After)
+  .by (name of the worker who submitted the sale)
 ```
 
 Date keys are formatted `DD-MM-YYYY` (see `todayKey()` / `dateKeyFromDate()` in `src/lib/utils.ts`).
@@ -184,6 +185,8 @@ The tasks page filter shows only Not Started / In progress / Completed; Delayed 
 
 - Sidebar entry "Daily Sales" → `/daily-sales`, in the Operations nav group.
 - Each hotel is rendered as its own card/section, fields shown in fixed order: C/F Before → Total Sales → Total Expenses → Banking → C/F After.
+- Each hotel card header shows "Submitted by {worker}" on the right, read from the `by` field of `sales/{date}/{hotel_name}/today`; falls back to `—` when absent. The all-hotels Total card has no submitter.
+- `SalesDoc` mixes numeric amounts with the string `by`, so the amount-only field keys use the `SalesAmountKey` type in `src/lib/types.ts` (used by the page's FIELDS/totals and by `src/lib/exportSales.ts`).
 - Hotel names are not stored as a field — they come from the Firestore path itself (`sales/{date}/{hotel_name}/today`), so `useSalesStore` discovers the hotel list from distinct `placeName` values across the `users` collection, then reads each hotel's `today` doc for the selected date.
 - Paginated by date via the same Prev/Next arrow pattern as Room status / Complaints (`getPrevDay` / `getNextDay` / `formatDateKey`), defaulting to `todayKey()` with Next disabled on today.
 

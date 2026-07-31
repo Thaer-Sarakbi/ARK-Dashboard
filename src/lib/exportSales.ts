@@ -1,9 +1,9 @@
 import * as XLSX from "xlsx";
-import type { SalesDoc } from "@/lib/types";
+import type { SalesAmountKey, SalesDoc } from "@/lib/types";
 import { fetchHotelList, fetchSalesForDate } from "@/lib/salesData";
 import { formatDateKey, getMonthToDateKeys } from "@/lib/utils";
 
-const FIELD_LABELS: { key: keyof Omit<SalesDoc, "hotel">; label: string }[] = [
+const FIELD_LABELS: { key: SalesAmountKey; label: string }[] = [
   { key: "before", label: "C/F Before" },
   { key: "totalSales", label: "Total Sales" },
   { key: "totalExpenses", label: "Total Expenses" },
@@ -11,15 +11,15 @@ const FIELD_LABELS: { key: keyof Omit<SalesDoc, "hotel">; label: string }[] = [
   { key: "after", label: "C/F After" },
 ];
 
-function zeroTotals(): Record<keyof Omit<SalesDoc, "hotel">, number> {
+function zeroTotals(): Record<SalesAmountKey, number> {
   return { before: 0, totalSales: 0, totalExpenses: 0, banking: 0, after: 0 };
 }
 
-function addInto(target: Record<keyof Omit<SalesDoc, "hotel">, number>, h: SalesDoc) {
+function addInto(target: Record<SalesAmountKey, number>, h: SalesDoc) {
   for (const f of FIELD_LABELS) target[f.key] += h[f.key];
 }
 
-function hotelRow(hotel: string, totals: Record<keyof Omit<SalesDoc, "hotel">, number>) {
+function hotelRow(hotel: string, totals: Record<SalesAmountKey, number>) {
   const row: Record<string, string | number> = { Hotel: hotel };
   for (const f of FIELD_LABELS) row[f.label] = totals[f.key];
   return row;
@@ -50,7 +50,7 @@ export async function exportMonthToDateSalesExcel(): Promise<void> {
   );
 
   const detailRows: Record<string, string | number>[] = [];
-  const totalsByHotel = new Map<string, Record<keyof Omit<SalesDoc, "hotel">, number>>();
+  const totalsByHotel = new Map<string, Record<SalesAmountKey, number>>();
   const grand = zeroTotals();
 
   for (const { dateKey, items } of perDate) {

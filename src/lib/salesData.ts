@@ -35,6 +35,7 @@ export async function fetchSalesForDate(dateKey: string, hotels: string[]): Prom
         totalExpenses: toNumber(data.totalExpenses),
         banking: toNumber(data.banking),
         after: toNumber(data.after),
+        by: typeof data.by === "string" ? data.by : "",
       } satisfies SalesDoc;
     })
   );
