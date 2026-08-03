@@ -30,11 +30,11 @@ export async function fetchSalesForDate(dateKey: string, hotels: string[]): Prom
       const data = snap.data();
       return {
         hotel,
-        before: toNumber(data.before),
         totalSales: toNumber(data.totalSales),
         totalExpenses: toNumber(data.totalExpenses),
         banking: toNumber(data.banking),
-        after: toNumber(data.after),
+        emptyRooms: toNumber(data.emptyRooms),
+        onlineBooking: toNumber(data.onlineBooking),
         by: typeof data.by === "string" ? data.by : "",
       } satisfies SalesDoc;
     })

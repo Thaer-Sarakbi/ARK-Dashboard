@@ -4,15 +4,15 @@ import { fetchHotelList, fetchSalesForDate } from "@/lib/salesData";
 import { formatDateKey, getMonthToDateKeys } from "@/lib/utils";
 
 const FIELD_LABELS: { key: SalesAmountKey; label: string }[] = [
-  { key: "before", label: "C/F Before" },
   { key: "totalSales", label: "Total Sales" },
   { key: "totalExpenses", label: "Total Expenses" },
   { key: "banking", label: "Banking" },
-  { key: "after", label: "C/F After" },
+  { key: "emptyRooms", label: "Empty Rooms" },
+  { key: "onlineBooking", label: "Online Booking" },
 ];
 
 function zeroTotals(): Record<SalesAmountKey, number> {
-  return { before: 0, totalSales: 0, totalExpenses: 0, banking: 0, after: 0 };
+  return { totalSales: 0, totalExpenses: 0, banking: 0, emptyRooms: 0, onlineBooking: 0 };
 }
 
 function addInto(target: Record<SalesAmountKey, number>, h: SalesDoc) {

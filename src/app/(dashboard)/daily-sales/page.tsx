@@ -11,12 +11,16 @@ function formatAmount(n: number): string {
   return `${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} RM`;
 }
 
-const FIELDS: { key: SalesAmountKey; label: string }[] = [
-  { key: "before", label: "C/F Before" },
-  { key: "totalSales", label: "Total Sales" },
-  { key: "totalExpenses", label: "Total Expenses" },
-  { key: "banking", label: "Banking" },
-  { key: "after", label: "C/F After" },
+function formatCount(n: number): string {
+  return Math.round(n).toLocaleString("en-US");
+}
+
+const FIELDS: { key: SalesAmountKey; label: string; format: (n: number) => string }[] = [
+  { key: "totalSales", label: "Total Sales", format: formatAmount },
+  { key: "totalExpenses", label: "Total Expenses", format: formatAmount },
+  { key: "banking", label: "Banking", format: formatAmount },
+  { key: "emptyRooms", label: "Empty Rooms", format: formatCount },
+  { key: "onlineBooking", label: "Online Booking", format: formatCount },
 ];
 
 export default function DailySalesPage() {
@@ -135,7 +139,7 @@ export default function DailySalesPage() {
               {FIELDS.map((f) => (
                 <div key={f.key}>
                   <div className="text-[11px] text-muted mb-[3px]">{f.label}</div>
-                  <div className="text-[15px] font-medium text-text">{formatAmount(h[f.key])}</div>
+                  <div className="text-[15px] font-medium text-text">{f.format(h[f.key])}</div>
                 </div>
               ))}
             </div>
@@ -156,7 +160,7 @@ export default function DailySalesPage() {
             {FIELDS.map((f) => (
               <div key={f.key}>
                 <div className="text-[11px] text-muted mb-[3px]">{f.label}</div>
-                <div className="text-[15px] font-medium text-acc-txt">{formatAmount(totals[f.key])}</div>
+                <div className="text-[15px] font-medium text-acc-txt">{f.format(totals[f.key])}</div>
               </div>
             ))}
           </div>

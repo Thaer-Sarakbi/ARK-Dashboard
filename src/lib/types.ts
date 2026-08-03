@@ -90,12 +90,12 @@ export interface ComplaintDoc {
 
 export interface SalesDoc {
   hotel: string;
-  before: number;
   totalSales: number;
   totalExpenses: number;
   banking: number;
-  after: number;
+  emptyRooms: number;
+  onlineBooking: number;
   by: string;
 }
 
-export type SalesAmountKey = "before" | "totalSales" | "totalExpenses" | "banking" | "after";
+export type SalesAmountKey = "totalSales" | "totalExpenses" | "banking" | "emptyRooms" | "onlineBooking";
