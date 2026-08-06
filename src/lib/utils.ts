@@ -157,3 +157,22 @@ export function progressBarColor(progress: number): string {
   if (progress >= 40) return "bg-warn";
   return "bg-err";
 }
+
+export const Hotels = [ 'AMPANG H2', 'AMPANG TESCO', 'BUKIT BERU', 'CAMERON', 'DOLOMITE', 'HARTAMAS H2', 'KUALA SELANGOR', 'MELAWATHI H3', 'NEW RAWANG', 'NILAI BUDGET', 'NILAI H2', 'PUTRA HEIGHT', 'SAMUDRA', 'SHAH ALAM H1', 'SHAH ALAM H2', 'SUNGAI BESI H1', 'AMPANG H1', 'DE GLORY', 'HARTAMAS H1', 'KAJANG STAR', 'KDH 1',
+'KDH 2',
+'MELAKKA',
+'MELAWATHI H2',
+'NEW KAJANG',
+'NEW RAWANG', 
+'SUBANG',
+'SG BESI H2',
+'SERANDAH',
+'PUCHONG',
+'ARK RAWANG',
+'BANTING', 
+'ARK Porkdickson', 
+'Avani sepang goldcost', 
+'Ampang 3 tower Office', 
+'Batu Caves Office', 
+'Not Spesific'
+]

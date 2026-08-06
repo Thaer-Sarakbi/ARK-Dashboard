@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, getDocs } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { SalesDoc } from "@/lib/types";
 
@@ -9,17 +9,6 @@ function toNumber(value: unknown): number {
     return Number.isFinite(n) ? n : 0;
   }
   return 0;
-}
-
-export async function fetchHotelList(): Promise<string[]> {
-  const usersSnap = await getDocs(collection(db, "users"));
-  return Array.from(
-    new Set(
-      usersSnap.docs
-        .map((d) => (d.data().placeName ?? "") as string)
-        .filter(Boolean)
-    )
-  ).sort();
 }
 
 export async function fetchSalesForDate(dateKey: string, hotels: string[]): Promise<SalesDoc[]> {

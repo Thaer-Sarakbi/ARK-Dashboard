@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import type { SalesDoc } from "@/lib/types";
-import { todayKey } from "@/lib/utils";
-import { fetchHotelList, fetchSalesForDate } from "@/lib/salesData";
+import { Hotels, todayKey } from "@/lib/utils";
+import { fetchSalesForDate } from "@/lib/salesData";
 
 interface SalesState {
   items: SalesDoc[];
@@ -20,8 +20,7 @@ export const useSalesStore = create<SalesState>((set) => ({
   fetchForDate: async (dateKey: string) => {
     set({ loading: true, error: null, currentDate: dateKey });
     try {
-      const hotels = await fetchHotelList();
-      const items = await fetchSalesForDate(dateKey, hotels);
+      const items = await fetchSalesForDate(dateKey, Hotels);
       set({ items, loading: false });
     } catch (err) {
       set({ error: (err as Error).message, loading: false, items: [] });

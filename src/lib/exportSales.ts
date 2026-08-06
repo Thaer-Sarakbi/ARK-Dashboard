@@ -1,7 +1,7 @@
 import * as XLSX from "xlsx";
 import type { SalesAmountKey, SalesDoc } from "@/lib/types";
-import { fetchHotelList, fetchSalesForDate } from "@/lib/salesData";
-import { formatDateKey, getMonthToDateKeys } from "@/lib/utils";
+import { fetchSalesForDate } from "@/lib/salesData";
+import { formatDateKey, getMonthToDateKeys, Hotels } from "@/lib/utils";
 
 const FIELD_LABELS: { key: SalesAmountKey; label: string }[] = [
   { key: "totalSales", label: "Total Sales" },
@@ -40,12 +40,11 @@ export function exportDailySalesExcel(dateKey: string, items: SalesDoc[]) {
 
 export async function exportMonthToDateSalesExcel(): Promise<void> {
   const dateKeys = getMonthToDateKeys();
-  const hotels = await fetchHotelList();
 
   const perDate = await Promise.all(
     dateKeys.map(async (dateKey) => ({
       dateKey,
-      items: await fetchSalesForDate(dateKey, hotels),
+      items: await fetchSalesForDate(dateKey, Hotels),
     }))
   );
 
