@@ -131,6 +131,23 @@ export function formatDateKey(key: string): string {
   return d.toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "short", year: "numeric" });
 }
 
+export function formatDateKeyShort(key: string): string {
+  const [dd, mm, yyyy] = key.split("-").map(Number);
+  const d = new Date(yyyy, mm - 1, dd);
+  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+}
+
+export function getLastNDaysKeys(n: number): string[] {
+  const now = new Date();
+  const keys: string[] = [];
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    keys.push(dateKeyFromDate(d));
+  }
+  return keys;
+}
+
 export function getMonthToDateKeys(): string[] {
   const now = new Date();
   const year = now.getFullYear();

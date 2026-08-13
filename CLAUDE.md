@@ -29,6 +29,7 @@ No test suite is configured yet.
 - **Zustand v5** — global state with Firestore real-time subscriptions
 - **Vercel AI SDK v6** (`ai`, `@ai-sdk/react`) + **OpenRouter** (`@openrouter/ai-sdk-provider`) — AI chat and structured extraction
 - **Tabler Icons** (`@tabler/icons-react`) — icon set used throughout the UI
+- **Recharts v3** — bar charts on the Analytics page
 - **Zod v4** — schema validation for AI-generated structured output
 - **ESLint v9** flat config (`eslint.config.mjs`) with `eslint-config-next` core-web-vitals + TypeScript rules
 
@@ -55,6 +56,7 @@ src/app/
     complaints/page.tsx               # Complaints — reads from Firestore /dates/ + date pagination
     reports/page.tsx                  # Daily admin reports + manual re-analyze
     daily-sales/page.tsx              # Daily sales per hotel — reads from Firestore /sales/ + date pagination
+    analytics/page.tsx                # Analytics — 4 bar charts (Total Sales/Expenses/Empty Rooms/Online Booking) by hotel, range filter
   api/
     chat/route.ts                     # POST — AI chat stream (OpenRouter → Claude)
     analyze-reports/route.ts          # POST — AI structured extraction from admin reports (manual)
@@ -77,6 +79,9 @@ src/components/
     WorkerAttendanceModal.tsx         # Monthly attendance popup (click worker name to open)
   tasks/
     AssignTaskModal.tsx               # Modal for creating/assigning a task
+  analytics/
+    HotelBarChart.tsx                 # Reusable Recharts bar chart — one bar per hotel, custom tooltip, horizontally scrollable
+    HotelTrendChart.tsx               # Recharts line chart — 4 metrics for one hotel over time, each line indexed to its own peak (0-100%)
   ui/
     Avatar.tsx
     KpiCard.tsx
@@ -99,6 +104,8 @@ All stores live under `src/store/`. Each subscribes to Firebase in real-time and
 | `useRoomStatusStore` | `/dates/{date}/roomStatus/` (Firestore) | Room status per date, fetched on demand via `fetchForDate(dateKey)` |
 | `useComplaintsStore` | `/dates/{date}/complaints/` (Firestore) | Complaints per date, fetched on demand via `fetchForDate(dateKey)` |
 | `useSalesStore` | `/sales/{date}/{hotel_name}/today` (Firestore) | Daily sales per hotel, fetched on demand via `fetchForDate(dateKey)`; hotel list derived from distinct `placeName` values in `users` |
+| `useAnalyticsStore` | `/sales/{date}/{hotel_name}/today` (Firestore), summed across a date range | Per-hotel totals (Total Sales/Expenses/Empty Rooms/Online Booking) for the Analytics page's bar charts, fetched via `fetchForRange(range)` where `range` is `"1"\|"7"\|"30"` |
+| `useHotelTrendStore` | `/sales/{date}/{hotel_name}/today` (Firestore), one doc per day | Per-day series for a single hotel (all 4 metrics) for the Analytics page's trend line chart, fetched via `fetch(hotel, range)` |
 | `useStorageStore` | Firebase Storage | Download URLs and folder listings with caching |
 | `createCollectionStore<T>` | Generic factory | Typed Zustand store for any Firestore collection path |
 
@@ -190,6 +197,18 @@ The tasks page filter shows only Not Started / In progress / Completed; Delayed 
 - Hotel names are not stored as a field — they come from the Firestore path itself (`sales/{date}/{hotel_name}/today`), so `useSalesStore` discovers the hotel list from distinct `placeName` values across the `users` collection, then reads each hotel's `today` doc for the selected date.
 - Paginated by date via the same Prev/Next arrow pattern as Room status / Complaints (`getPrevDay` / `getNextDay` / `formatDateKey`), defaulting to `todayKey()` with Next disabled on today.
 
+### Analytics
+
+- Sidebar entry "Analytics" → `/analytics`, in the Operations nav group (after Daily Sales).
+- 4 bar charts, one per metric, each with one bar per hotel: Total Sales, Total Expenses, Empty Rooms, Online Booking — all read from `sales/{date}/{hotel_name}/today` (`totalSales` / `totalExpenses` / `emptyRooms` / `onlineBooking`), same source doc as Daily Sales.
+- Date-range filter (segmented control, top-right): Last day / Last 7 days / Last 30 days, backed by `getLastNDaysKeys(n)` in `src/lib/utils.ts` (today + the previous `n-1` days).
+- Aggregation: for multi-day ranges each hotel's bar is the **sum** across every date in the range (money and counts both summed, not averaged). A date with no doc for a hotel contributes 0. A hotel with no doc on *any* date in the range is omitted from the charts entirely (mirrors the "only show hotels that submitted" behavior of the Daily Sales page).
+- Data flow: `src/lib/analyticsData.ts` (`fetchAnalyticsForRange`) fans out `fetchSalesForDate` (from `salesData.ts`) across the range and sums per hotel → `useAnalyticsStore` → `analytics/page.tsx` → `HotelBarChart` (Recharts `BarChart`, single accent-colored series, no legend needed for a single series, custom tooltip, angled x-axis hotel labels, horizontally scrollable when the hotel count is wide).
+- Money fields format as `RM` with 2 decimals; Empty Rooms/Online Booking format as plain integer counts — same `formatAmount`/`formatCount` convention as Daily Sales.
+- **Hotel trend section** (below the 4 bar charts, its own filter row — hotel `<select>` + its own Last day/7/30 days range, independent of the bar charts' range): one `HotelTrendChart` line chart for a single selected hotel with 4 lines (Total Sales, Total Expenses, Empty Rooms, Online Booking), one point per day in range (missing days plot as 0, keeping the line continuous). Default hotel is the alphabetically-first entry in `SORTED_HOTELS` (`src/lib/analyticsData.ts`).
+- **Normalized y-axis**: money (RM, often thousands) and room/booking counts (single/double digits) can't share a readable linear scale, so each line is indexed to its **own peak within the selected range** (0-100%, `value / max(that metric in range) * 100`) rather than plotted on shared raw-value or dual axes — this keeps all 4 lines visible together on one axis. The tooltip and legend still show/label the real RM amounts and counts; only the plotted line position is normalized.
+- **Fixed line colors** (never reassigned by filter state): Total Sales `#2a78d6` (blue), Total Expenses `#eb6834` (orange), Empty Rooms `#1baf7a` (aqua), Online Booking `#eda100` (yellow) — a validated CVD-safe categorical order, distinct from the app's semantic status tokens (ok/warn/err) so a trend line is never mistaken for a status color.
+
 ### Assign Task
 
 Hardcoded: `assignedBy: 'Surendran Balan'`, `assignedById: 'TN7uEpCUmZRStizVfME1vvqx3az2'`.
@@ -208,7 +227,7 @@ Defined in `src/app/globals.css` under `@theme inline`. Base font-size: 15px. Ke
 | `--color-ok/warn/err` | green/amber/red | Status pill text |
 | `--color-ok-bg/warn-bg/err-bg` | tints | Status pill background |
 
-Helper functions in `src/lib/utils.ts`: `statusPillClass`, `attendancePillClass`, `severityPillClass`, `dateKeyFromDate`, `getPrevDay`, `getNextDay`, `formatDateKey`.
+Helper functions in `src/lib/utils.ts`: `statusPillClass`, `attendancePillClass`, `severityPillClass`, `dateKeyFromDate`, `getPrevDay`, `getNextDay`, `formatDateKey`, `formatDateKeyShort`, `getMonthToDateKeys`, `getLastNDaysKeys(n)`.
 
 ### Routing conventions
 
