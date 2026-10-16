@@ -1,11 +1,12 @@
-import { attendancePillClass, statusPillClass, severityPillClass } from "@/lib/utils";
-import type { TaskStatus } from "@/lib/types";
+import { advancePillClass, attendancePillClass, statusPillClass, severityPillClass } from "@/lib/utils";
+import type { AdvanceStatus, TaskStatus } from "@/lib/types";
 
 type BadgeVariant =
   | "Present"
   | "Absent"
   | "Finished"
   | TaskStatus
+  | AdvanceStatus
   | "low"
   | "medium"
   | "high";
@@ -13,6 +14,8 @@ type BadgeVariant =
 function getClass(status: BadgeVariant): string {
   if (status === "Present" || status === "Absent" || status === "Finished")
     return attendancePillClass(status);
+  if (status === "Pending" || status === "Approved" || status === "Rejected")
+    return advancePillClass(status);
   if (status === "low" || status === "medium" || status === "high")
     return severityPillClass(status);
   return statusPillClass(status as TaskStatus);

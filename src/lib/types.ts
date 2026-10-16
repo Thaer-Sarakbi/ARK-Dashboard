@@ -99,3 +99,17 @@ export interface SalesDoc {
 }
 
 export type SalesAmountKey = "totalSales" | "totalExpenses" | "banking" | "emptyRooms" | "onlineBooking";
+
+export type AdvanceStatus = "Pending" | "Approved" | "Rejected";
+
+export interface SalaryAdvance {
+  id: string;
+  userId: string;
+  title: string;
+  amount: number;
+  creationDate?: Timestamp | Date;
+  description?: string;
+  location?: string;
+  requestedBy?: string;
+  status?: AdvanceStatus;
+}

@@ -13,6 +13,7 @@ import {
   IconBuildingSkyscraper,
   IconCash,
   IconChartBar,
+  IconWallet,
 } from "@tabler/icons-react";
 import { useUserStore } from "@/store/useUserStore";
 import { getInitials } from "@/lib/utils";
@@ -22,6 +23,7 @@ const NAV_ITEMS = [
   { href: "/overview", label: "Dashboard", icon: IconLayoutDashboard },
   { href: "/attendance", label: "Attendance", icon: IconUsers },
   { href: "/tasks", label: "Task tracker", icon: IconClipboardList },
+  { href: "/salary-advances", label: "Salary advances", icon: IconWallet },
   { href: "/rooms", label: "Room status", icon: IconBuilding },
   { href: "/complaints", label: "Complaints", icon: IconMessageReport },
   { href: "/reports", label: "Daily reports", icon: IconFileText },

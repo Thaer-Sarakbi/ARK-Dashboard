@@ -95,6 +95,26 @@ export function statusPillClass(status: TaskStatus): string {
   return map[status] ?? "bg-acc-bg text-acc-txt";
 }
 
+// Digits-only number for wa.me links, with Malaysia's 60 country code prepended when missing
+export function toWhatsAppNumber(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.startsWith("60")) return digits;
+  return `60${digits.replace(/^0+/, "")}`;
+}
+
+export function formatRM(amount: number | undefined): string {
+  return `RM ${(Number(amount) || 0).toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+export function advancePillClass(status: "Pending" | "Approved" | "Rejected"): string {
+  const map: Record<string, string> = {
+    Pending:  "bg-warn-bg text-warn",
+    Approved: "bg-ok-bg text-ok",
+    Rejected: "bg-err-bg text-err",
+  };
+  return map[status] ?? "";
+}
+
 export function attendancePillClass(status: "Present" | "Absent" | "Finished"): string {
   const map: Record<string, string> = {
     Present:  "bg-ok-bg text-ok",

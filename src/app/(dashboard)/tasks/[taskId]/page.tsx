@@ -15,7 +15,7 @@ import { useTasksStore } from "@/store/useTasksStore";
 import { useWorkersStore } from "@/store/useWorkersStore";
 import { useStorageStore } from "@/store/useStorageStore";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { formatDate } from "@/lib/utils";
+import { formatDate, toWhatsAppNumber } from "@/lib/utils";
 import type { TaskStatus } from "@/lib/types";
 
 function getTaskStatus(task: { Status?: TaskStatus; status?: TaskStatus }): TaskStatus {
@@ -86,7 +86,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ taskId: s
             {worker?.phoneNumber && (
               <button
                 onClick={() => {
-                  const phone = worker.phoneNumber!.replace(/\D/g, "");
+                  const phone = toWhatsAppNumber(worker.phoneNumber!);
                   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin;
                   const taskUrl = `${appUrl}/tasks/${taskId}`;
                   const text = encodeURIComponent(

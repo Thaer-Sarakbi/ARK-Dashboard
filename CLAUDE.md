@@ -52,6 +52,8 @@ src/app/
     attendance/page.tsx               # Attendance tracker — date pagination, night shift, worker popup
     tasks/page.tsx                    # Task list with status filter tabs
     tasks/[taskId]/page.tsx           # Task detail with image attachment slider
+    salary-advances/page.tsx          # Salary advances (all users) with All/Pending/Approved/Rejected filter tabs
+    salary-advances/[userId]/[advanceId]/page.tsx  # Read-only advance detail + image attachment slider
     rooms/page.tsx                    # Room status — reads from Firestore /dates/ + date pagination
     complaints/page.tsx               # Complaints — reads from Firestore /dates/ + date pagination
     reports/page.tsx                  # Daily admin reports + manual re-analyze
@@ -100,6 +102,7 @@ All stores live under `src/store/`. Each subscribes to Firebase in real-time and
 | `useUserStore` | `users/{uid}` (Firestore) | Signed-in user's profile document |
 | `useWorkersStore` | `users` collection + attendance subcollections | All worker profiles with today's Morning + Night check-in/check-out |
 | `useTasksStore` | `users/{uid}/tasks` (collectionGroup) | All tasks; create and update status |
+| `useAdvancesStore` | `users/{uid}/advances` (collectionGroup) | All users' salary advances, sorted newest first by `creationDate`; also exports `advanceCreatedMs()` |
 | `useReportsStore` | `users/{uid}/attendance/{date}/report/today` | Admin daily reports + AI-analysed `AnalysisResult` (used by reports page) |
 | `useRoomStatusStore` | `/dates/{date}/roomStatus/` (Firestore) | Room status per date, fetched on demand via `fetchForDate(dateKey)` |
 | `useComplaintsStore` | `/dates/{date}/complaints/` (Firestore) | Complaints per date, fetched on demand via `fetchForDate(dateKey)` |
@@ -120,6 +123,10 @@ users/{uid}/tasks/{taskId}
   .assignedTo (worker name) / .assignedToId / .assignedBy / .assignedById
   .location / .duration (days) / .Status ("Not Started"|"In progress"|"Completed")
   .creationDate (Date) / .updatedAt (Timestamp)
+
+users/{uid}/advances/{advanceId}
+  .title / .amount / .creationDate / .description / .location / .requestedBy
+  .status ("Pending"|"Approved"|"Rejected")  — lowercase field name
 
 users/{uid}/attendance/{DD-MM-YYYY}/checkIn/Morning
   .time  (Timestamp)
@@ -156,6 +163,7 @@ users/{uid}/profile/files                                          # Profile pho
 users/{uid}/attendance/{DD-MM-YYYY}/report/today/files            # Daily report attachments
 users/{uid}/tasks/{taskId}/files                                  # Task attachments (shown as slider in task detail)
 users/{uid}/tasks/{taskId}/updates/{updateId}/files               # Task update attachments
+users/{uid}/advances/{advanceId}/files                            # Salary advance attachments (slider in advance detail)
 ```
 
 ### AI routes
@@ -209,6 +217,14 @@ The tasks page filter shows only Not Started / In progress / Completed; Delayed 
 - **Normalized y-axis**: money (RM, often thousands) and room/booking counts (single/double digits) can't share a readable linear scale, so each line is indexed to its **own peak within the selected range** (0-100%, `value / max(that metric in range) * 100`) rather than plotted on shared raw-value or dual axes — this keeps all 4 lines visible together on one axis. The tooltip and legend still show/label the real RM amounts and counts; only the plotted line position is normalized.
 - **Fixed line colors** (never reassigned by filter state): Total Sales `#2a78d6` (blue), Total Expenses `#eb6834` (orange), Empty Rooms `#1baf7a` (aqua), Online Booking `#eda100` (yellow) — a validated CVD-safe categorical order, distinct from the app's semantic status tokens (ok/warn/err) so a trend line is never mistaken for a status color.
 
+### Salary advances
+
+- Sidebar entry "Salary advances" → `/salary-advances`, in the Operations group right after Task tracker.
+- List shows title, requestedBy, location, amount (`formatRM`), status; filter tabs All / Pending / Approved / Rejected (default All).
+- Detail route is `/salary-advances/{userId}/{advanceId}` so it reads `users/{userId}/advances/{advanceId}` directly (live `onSnapshot`) and works from a direct link. Read-only — no approve/reject actions in the dashboard.
+- Header has a "Send by WhatsApp" button (same as task detail) when the requesting worker (`useWorkersStore`, matched by `userId`) has a `phoneNumber`; opens an empty `wa.me` chat with that worker (no prefilled message).
+- Status pills via `advancePillClass` (Pending=warn, Approved=ok, Rejected=err); `StatusBadge` accepts `AdvanceStatus`.
+
 ### Assign Task
 
 Hardcoded: `assignedBy: 'Surendran Balan'`, `assignedById: 'TN7uEpCUmZRStizVfME1vvqx3az2'`.
@@ -227,7 +243,7 @@ Defined in `src/app/globals.css` under `@theme inline`. Base font-size: 15px. Ke
 | `--color-ok/warn/err` | green/amber/red | Status pill text |
 | `--color-ok-bg/warn-bg/err-bg` | tints | Status pill background |
 
-Helper functions in `src/lib/utils.ts`: `statusPillClass`, `attendancePillClass`, `severityPillClass`, `dateKeyFromDate`, `getPrevDay`, `getNextDay`, `formatDateKey`, `formatDateKeyShort`, `getMonthToDateKeys`, `getLastNDaysKeys(n)`.
+Helper functions in `src/lib/utils.ts`: `statusPillClass`, `attendancePillClass`, `severityPillClass`, `dateKeyFromDate`, `getPrevDay`, `getNextDay`, `formatDateKey`, `formatDateKeyShort`, `getMonthToDateKeys`, `getLastNDaysKeys(n)`, `advancePillClass`, `formatRM`, `toWhatsAppNumber` (digits-only, prepends `60` when missing, dropping a local leading `0` — used by both WhatsApp buttons).
 
 ### Routing conventions
 
