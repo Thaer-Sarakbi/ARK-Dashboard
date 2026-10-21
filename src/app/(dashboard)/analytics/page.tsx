@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { IconBed, IconCash, IconChartBar, IconChartLine, IconReceipt2, IconWorld } from "@tabler/icons-react";
 import { useAnalyticsStore, RANGE_LABELS, type AnalyticsRange } from "@/store/useAnalyticsStore";
 import { useHotelTrendStore } from "@/store/useHotelTrendStore";
 import { HotelBarChart } from "@/components/analytics/HotelBarChart";
-import { HotelTrendChart } from "@/components/analytics/HotelTrendChart";
+import { HotelTrendChart, TREND_METRICS, type TrendMetric } from "@/components/analytics/HotelTrendChart";
 import { SORTED_HOTELS } from "@/lib/analyticsData";
 
 function formatAmount(n: number): string {
@@ -21,6 +21,7 @@ const RANGES: AnalyticsRange[] = ["1", "7", "30"];
 export default function AnalyticsPage() {
   const { items, loading, range, fetchForRange } = useAnalyticsStore();
   const { items: trendItems, loading: trendLoading, hotel, range: trendRange, fetch: fetchTrend } = useHotelTrendStore();
+  const [trendMetric, setTrendMetric] = useState<TrendMetric>("totalSales");
 
   useEffect(() => {
     fetchForRange(range);
@@ -119,6 +120,17 @@ export default function AnalyticsPage() {
             ))}
           </select>
 
+          <select
+            value={trendMetric}
+            onChange={(e) => setTrendMetric(e.target.value as TrendMetric)}
+            className="text-[12px] px-2 py-1 rounded-md text-text outline-none"
+            style={{ border: "0.5px solid rgba(0,0,0,0.10)", background: "rgba(0,0,0,0.04)" }}
+          >
+            {TREND_METRICS.map((m) => (
+              <option key={m.key} value={m.key}>{m.label}</option>
+            ))}
+          </select>
+
           <div className="flex items-center gap-1 rounded-lg p-0.5" style={{ background: "var(--color-canvas)" }}>
             {RANGES.map((r) => (
               <button
@@ -143,13 +155,13 @@ export default function AnalyticsPage() {
         style={{ background: "var(--color-surface)", border: "0.5px solid var(--color-border)" }}
       >
         <div className="flex items-center gap-1.5 text-[13px] font-medium text-text mb-3">
-          {hotel}
+          {hotel} · {TREND_METRICS.find((m) => m.key === trendMetric)?.label}
         </div>
 
         {trendLoading ? (
           <div className="text-center text-[12px] text-muted py-10">Loading…</div>
         ) : (
-          <HotelTrendChart data={trendItems} />
+          <HotelTrendChart data={trendItems} metric={trendMetric} />
         )}
       </div>
     </div>

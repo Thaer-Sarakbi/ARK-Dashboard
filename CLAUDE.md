@@ -83,7 +83,7 @@ src/components/
     AssignTaskModal.tsx               # Modal for creating/assigning a task
   analytics/
     HotelBarChart.tsx                 # Reusable Recharts bar chart — one bar per hotel, custom tooltip, horizontally scrollable
-    HotelTrendChart.tsx               # Recharts line chart — 4 metrics for one hotel over time, each line indexed to its own peak (0-100%)
+    HotelTrendChart.tsx               # Recharts line chart — one selected metric for one hotel over time (real values); exports TREND_METRICS
   ui/
     Avatar.tsx
     KpiCard.tsx
@@ -213,9 +213,9 @@ The tasks page filter shows only Not Started / In progress / Completed; Delayed 
 - Aggregation: for multi-day ranges each hotel's bar is the **sum** across every date in the range (money and counts both summed, not averaged). A date with no doc for a hotel contributes 0. A hotel with no doc on *any* date in the range is omitted from the charts entirely (mirrors the "only show hotels that submitted" behavior of the Daily Sales page).
 - Data flow: `src/lib/analyticsData.ts` (`fetchAnalyticsForRange`) fans out `fetchSalesForDate` (from `salesData.ts`) across the range and sums per hotel → `useAnalyticsStore` → `analytics/page.tsx` → `HotelBarChart` (Recharts `BarChart`, single accent-colored series, no legend needed for a single series, custom tooltip, angled x-axis hotel labels, horizontally scrollable when the hotel count is wide).
 - Money fields format as `RM` with 2 decimals; Empty Rooms/Online Booking format as plain integer counts — same `formatAmount`/`formatCount` convention as Daily Sales.
-- **Hotel trend section** (below the 4 bar charts, its own filter row — hotel `<select>` + its own Last day/7/30 days range, independent of the bar charts' range): one `HotelTrendChart` line chart for a single selected hotel with 4 lines (Total Sales, Total Expenses, Empty Rooms, Online Booking), one point per day in range (missing days plot as 0, keeping the line continuous). Default hotel is the alphabetically-first entry in `SORTED_HOTELS` (`src/lib/analyticsData.ts`).
-- **Normalized y-axis**: money (RM, often thousands) and room/booking counts (single/double digits) can't share a readable linear scale, so each line is indexed to its **own peak within the selected range** (0-100%, `value / max(that metric in range) * 100`) rather than plotted on shared raw-value or dual axes — this keeps all 4 lines visible together on one axis. The tooltip and legend still show/label the real RM amounts and counts; only the plotted line position is normalized.
-- **Fixed line colors** (never reassigned by filter state): Total Sales `#2a78d6` (blue), Total Expenses `#eb6834` (orange), Empty Rooms `#1baf7a` (aqua), Online Booking `#eda100` (yellow) — a validated CVD-safe categorical order, distinct from the app's semantic status tokens (ok/warn/err) so a trend line is never mistaken for a status color.
+- **Hotel trend section** (below the 4 bar charts, its own filter row — hotel `<select>` + metric `<select>` + its own Last day/7/30 days range, independent of the bar charts' range): one `HotelTrendChart` line chart for a single selected hotel showing **only the selected metric** (Total Sales / Total Expenses / Empty Rooms / Online Booking, default Total Sales; local `useState` in the page, not in the store). One point per day in range (missing days plot as 0, keeping the line continuous). Default hotel is the alphabetically-first entry in `SORTED_HOTELS` (`src/lib/analyticsData.ts`). Card header reads `{hotel} · {metric}`.
+- **Y-axis**: real values of the selected metric (compact tick labels, e.g. `12K`); tooltip shows the full formatted value (`RM` with 2 decimals for money, integer for counts). No normalization since only one series is plotted.
+- **Fixed metric colors** (`TREND_METRICS` in `HotelTrendChart.tsx`, never reassigned by filter state): Total Sales `#2a78d6` (blue), Total Expenses `#eb6834` (orange), Empty Rooms `#1baf7a` (aqua), Online Booking `#eda100` (yellow) — distinct from the app's semantic status tokens (ok/warn/err) so a trend line is never mistaken for a status color.
 
 ### Salary advances
 
